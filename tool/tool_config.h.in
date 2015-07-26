@@ -1,0 +1,3 @@
+#pragma once
+
+#define ARG_TOOL_VERSION "@PROJECT_VERSION@"

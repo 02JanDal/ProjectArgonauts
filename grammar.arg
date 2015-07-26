@@ -1,0 +1,21 @@
+enum SiteType<UInt8> {
+	Commercial = 0;
+	Governmental = 1;
+	VoluntaryOrganization = 3;
+}
+
+struct User {
+	name String = 0;
+	email String = 1;
+	@optional
+	age UInt8 = 2;
+	signup UInt64 = 4;
+	@doc("This can be empty")
+	hobbies List<String> = 3;
+}
+struct Site {
+	name String = 0;
+	url String = 1;
+	users List<User> = 2;
+	type SiteType = 3;
+}
