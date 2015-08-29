@@ -1,91 +1,143 @@
 #include "Importer.h"
 
 #include <iostream>
+#include <fstream>
+#include <ctime>
+#include <iomanip>
 
-#include "util/JsonSax.h"
+#include "util/SaxSink.h"
+#include "util/json/JsonSaxReader.h"
+#include "util/json/JsonSchema.h"
+#include "util/json/JsonSchemaResolver.h"
 #include "util/StringUtil.h"
+#include "util/TermUtil.h"
+#include "util/CmdParser.h"
 
-class DebuggingJsonHandler : public JsonSaxHandler
-{
-	bool null()
-	{
-		std::cout << std::string(indention, ' ') << "Null()" << std::endl;
-		return true;
-	}
-	bool boolean(const bool value)
-	{
-		std::cout << std::string(indention, ' ') << "Boolean(" << (value ? "true" : "false") << ")" << std::endl;
-		return true;
-	}
-	bool integerNumber(const int64_t value)
-	{
-		std::cout << std::string(indention, ' ') << "Integer(" << value << ")" << std::endl;
-		return true;
-	}
-	bool doubleNumber(const double value)
-	{
-		std::cout << std::string(indention, ' ') << "Double(" << value << ")" << std::endl;
-		return true;
-	}
-	bool string(const char *str, const std::size_t size)
-	{
-		std::cout << std::string(indention, ' ') << "String(\"" << StringUtil::replaceAll(std::string(str, size), "\n", "\\n") << "\")" << std::endl;
-		return true;
-	}
-	bool startObject()
-	{
-		std::cout << std::string(indention, ' ') << "Object(" << std::endl;
-		indention += 4;
-		return true;
-	}
-	bool key(const char *str, const std::size_t size)
-	{
-		std::cout << std::string(indention, ' ') << "Key(" << std::string(str, size) << ')' << std::endl;
-		return true;
-	}
-	bool endObject(const std::size_t size)
-	{
-		indention -= 4;
-		std::cout << std::string(indention, ' ') << ")Object(" << size << ")" << std::endl;
-		return true;
-	}
-	bool startArray()
-	{
-		std::cout << std::string(indention, ' ') << "Array(" << std::endl;
-		indention += 4;
-		return true;
-	}
-	bool endArray(const std::size_t size)
-	{
-		indention -= 4;
-		std::cout << std::string(indention, ' ') << ")Array(" << size << ")" << std::endl;
-		return true;
-	}
+using namespace TermUtil;
 
-	int indention = 0;
-};
+namespace Argonauts {
+using namespace Util;
+namespace Tool {
 
 Importer::Importer()
 {
 }
 
-bool Importer::run()
+void Importer::setup(std::shared_ptr<CLI::ParserBuilder> &builder)
 {
-	const char *json = R"json(
-{ name: "Ford Prefect\n",
-	age: +42,
-	alive: false,
-	"hobbies": [
-		"Hitchhiking",
-	]}
-)json";
-	JsonSax sax(new DebuggingJsonHandler);
-	sax.addData(std::string(json));
-	sax.end();
-	if (sax.isError())
+	builder->addSubcommand({"import", "i"}, "Creates an Argnaut file from JSON-Schema")->setup([this](CLI::Subcommand::Ptr &cmd)
 	{
-		std::cerr << sax.error() << std::endl;
-		return false;
+		cmd->withPositionalArgument("schema", "The JSON-Schema(s) file to import", CLI::Subcommand::Repeatable)->applyTo(this, &Importer::schemas);
+		cmd->addOption({"output", "o"}, "If name of an existing directory or ending with / each schema will be put in a separate file, otherwise all schemas will be put in the file with this name")
+				->withRequiredArg("file")
+				->beingRequired()->applyTo(this, &Importer::output);
+		cmd->addOption({"force", "no-force", "f"}, "If a file with the same name already exists force overwrite it")->applyTo(this, &Importer::force);
+		cmd->then([this](const CLI::Parser &parser) { return run(parser) ? CLI::Execution::ExitSuccess : CLI::Execution::ExitFailure; });
+	});
+}
+
+static std::string removeDotDotFromPath(const std::string &in)
+{
+	std::string out = in;
+	std::size_t pos = 0;
+	while ((pos = out.find("../")) != std::string::npos) {
+		out = out.substr(pos + 3);
 	}
+	return out;
+}
+static std::string basename(const std::string &in)
+{
+	const std::string name = in.substr(in.rfind('/') == std::string::npos ? 0 : in.rfind('/'));
+	return name.substr(0, name.find('.'));
+}
+
+struct Enum
+{
+	std::string name;
+	std::vector<std::string> items;
+
+	void dump(const std::string &indention, std::ostream &out)
+	{
+		out << indention << "enum " << name << "<UInt8> {\n";
+		for (std::size_t i = 0; i < items.size(); ++i) {
+			out << indention << "\t" << items[i] << " = " << i << ";\n";
+		}
+	}
+};
+
+bool Importer::run(const CLI::Parser &parser)
+{
+	Json::SchemaResolver resolver(Json::SchemaResolver::ExternalReferenceBasenameOnly);
+	for (const std::string &file : schemas) {
+		// read file
+		std::ifstream stream;
+		stream.open(file);
+		if (!stream.is_open()) {
+			std::cerr << fg(Red, "Unable to open file " + style(Bold, file)) << std::endl;
+			return false;
+		}
+		stream.seekg(0, std::ios_base::end);
+		const int length = stream.tellg();
+		stream.seekg(0, std::ios_base::beg);
+		std::unique_ptr<char> dataBuffer(new char[length]);
+		stream.read(dataBuffer.get(), length);
+		stream.close();
+
+		// parse file
+		Json::SchemaPtr ptr = std::make_shared<Json::Schema>();
+		Json::SchemaParserHandler handler(ptr);
+		Json::SaxReader reader(&handler);
+		reader.addData(dataBuffer.get(), length);
+		reader.end();
+		if (reader.isError()) {
+			throw reader.error(std::string(dataBuffer.get(), length), file);
+		}
+		resolver.addSchema(removeDotDotFromPath(file), ptr);
+		std::clog << "Successfully loaded " << fg(Green, removeDotDotFromPath(file)) << std::endl;
+	}
+
+	// resolve schemas
+	std::clog << "Resolving " << fg(Yellow, std::to_string(resolver.result().size())) << " schema(s)..." << std::endl;
+	resolver.resolve();
+	std::clog << "Resolving succeeded" << std::endl;
+
+	// output result
+	if (output == "-") {
+		dump(std::cout, parser, resolver);
+	} else {
+		std::ofstream stream;
+		stream.open(output);
+		if (!stream.is_open()) {
+			std::cerr << fg(Red, "Unable to open file " + style(Bold, output)) << std::endl;
+		}
+		dump(stream, parser, resolver);
+	}
+
 	return true;
+}
+
+void Importer::dump(std::ostream &stream, const CLI::Parser &parser, const Json::SchemaResolver &resolver)
+{
+	std::time_t time = std::time(nullptr);
+	stream << "// Automatically generated by " << parser.name() << " " << parser.version() << " on " << std::put_time(std::localtime(&time), "%F %T %Z") << '\n';
+	stream << "// Generated from " << StringUtil::joinStrings(resolver.usedSchemas(), ", ") << '\n';
+
+	for (const auto &pair : resolver.rawResult()) {
+		dumpSchema(stream, pair.first, pair.second);
+	}
+}
+
+void Importer::dumpSchema(std::ostream &stream, const std::string &filename, const Json::SchemaPtr &schema)
+{
+	const std::string name = schema->title.empty() ? basename(filename) : schema->title;
+
+	stream << std::endl;
+	if (!schema->description.empty()) {
+		stream << "@Description(" << std::quoted(schema->description) << ")\n";
+	}
+	stream << "struct " << name << " {\n";
+	stream << "TODO: finish this\n";
+	// TODO finish this
+}
+}
 }

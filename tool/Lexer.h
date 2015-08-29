@@ -12,16 +12,6 @@ class Lexer
 public:
 	explicit Lexer();
 
-	class LexerException : public ArgonautsException { using ArgonautsException::ArgonautsException; };
-	class UnexpectedCharacterException : public LexerException
-	{
-	public:
-		explicit UnexpectedCharacterException(const std::string &message, const int offset)
-			: LexerException(message), offset(offset) {}
-
-		const int offset;
-	};
-
 	struct Token
 	{
 		explicit Token() : type(Invalid) {}
@@ -44,7 +34,9 @@ public:
 			AngleBracketOpen,
 			AngleBracketClose,
 			SemiColon,
+			Colon,
 			Comma,
+			Dot,
 			Equal,
 			EndOfFile,
 
@@ -64,11 +56,11 @@ public:
 		static Token createSpecial(const Type type, const int offset) { return Token(type, std::string(), 0, offset); }
 
 	private:
-		explicit Token(const Type &type, const std::string &string, const int64_t integer, const int offset)
-			: type(type), string(string), integer(integer), offset(offset) {}
+		explicit Token(const Type &type_, const std::string &string_, const int64_t integer_, const int offset_)
+			: type(type_), string(string_), integer(integer_), offset(offset_) {}
 	};
 
-	std::vector<Token> consume(const std::string &data);
+	std::vector<Token> consume(const std::string &data, const std::string &filename);
 
 private:
 	std::string consumeWhile(SelfContainedIterator<std::string> &it, const std::function<bool(const char)> &isAcceptedCallback);
@@ -80,5 +72,5 @@ private:
 		Space,
 		Other
 	};
-	static const CharacterClass classifyCharacter(const char c);
+	static CharacterClass classifyCharacter(const char c);
 };

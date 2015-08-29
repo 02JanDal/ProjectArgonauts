@@ -3,6 +3,8 @@
 #include "OsUtil.h"
 
 #ifdef OS_UNIX
+# include <sys/ioctl.h>
+# include <cstdio>
 # include <unistd.h>
 #else
 # include <io.h>
@@ -15,7 +17,7 @@ namespace TermUtil
 namespace detail
 {
 #ifdef OS_UNIX
-std::string getStyleCode(const Style style)
+static std::string getStyleCode(const Style style)
 {
 	switch (style)
 	{
@@ -27,7 +29,7 @@ std::string getStyleCode(const Style style)
 	case TermUtil::Concealed: return "\033[8m";
 	}
 }
-std::string getStyleEndCode(const Style style)
+static std::string getStyleEndCode(const Style style)
 {
 	switch (style)
 	{
@@ -39,7 +41,7 @@ std::string getStyleEndCode(const Style style)
 	case TermUtil::Concealed: return "\033[38m";
 	}
 }
-std::string getFGColorCode(const Color color)
+static std::string getFGColorCode(const Color color)
 {
 	switch (color)
 	{
@@ -53,7 +55,7 @@ std::string getFGColorCode(const Color color)
 	case TermUtil::White: return "\033[37m";
 	}
 }
-std::string getBGColorCode(const Color color)
+static std::string getBGColorCode(const Color color)
 {
 	switch (color)
 	{
@@ -146,6 +148,17 @@ bool isTty()
 	return ::_isatty(_fileno(stdout));
 #else
 	return ::isatty(fileno(stdout));
+#endif
+}
+
+int currentWidth()
+{
+#ifdef OS_UNIX
+	struct winsize w;
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+	return w.ws_col;
+#else
+	return 120;
 #endif
 }
 

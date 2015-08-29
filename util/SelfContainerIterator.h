@@ -13,8 +13,8 @@ class SelfContainedIterator
 	const_iterator it;
 
 public:
-	inline explicit SelfContainedIterator(const T &container)
-		: container(container), it(std::begin(container)) {}
+	inline explicit SelfContainedIterator(const T &c)
+		: container(c), it(std::begin(c)) {}
 	inline void toFront() { it = std::begin(container); }
 	inline void toBack() { it = std::end(container); }
 	inline bool hasNext() const { return it != std::end(container); }

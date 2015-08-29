@@ -5,11 +5,13 @@
 #include <functional>
 #include <algorithm>
 #include <map>
+#include <memory>
 
 #include "ArgonautsException.h"
 
-namespace CLI
-{
+namespace Argonauts {
+namespace Util {
+namespace CLI {
 using std::string;
 using std::vector;
 using std::map;
@@ -87,9 +89,13 @@ class MissingRequiredOptionArgument : public ParserException
 {
 	using ParserException::ParserException;
 };
+class ArgumentNotInSetException : public ParserException
+{
+	using ParserException::ParserException;
+};
 
 /// Specifies an option (--output=OUTPUT, --no-overwrite, -c)
-class Option
+class Option : public std::enable_shared_from_this<Option>
 {
 	friend class Subcommand;
 	friend class Parser;
@@ -107,43 +113,76 @@ class Option
 	vector<detail::Caller> callbacks;
 	/// true if this option is required
 	bool isRequired = false;
-
-	explicit Option(const vector<string> &names, const string help)
-		: names(names), help(help) {}
+	/// true if this option should exclusivly be invoked before checking constraints
+	bool earlyExit = false;
+	/// if non-empty, the argument must be contained in this list
+	vector<string> fromSet;
 
 public:
+	using Ptr = std::shared_ptr<Option>;
+
+	explicit Option(const vector<string> &names_, const string &help_)
+		: names(names_), help(help_) {}
 	explicit Option() {}
 
-	Option &beingRequired()
+	Option::Ptr beingRequired()
 	{
 		isRequired = true;
-		return *this;
+		return shared_from_this();
 	}
-	Option &withArg(const string &arg);
-	Option &withRequiredArg(const string &arg)
+	Option::Ptr withArg(const string &arg)
+	{
+		argument = arg;
+		return shared_from_this();
+	}
+	Option::Ptr withRequiredArg(const string &arg)
 	{
 		isArgumentRequired = true;
 		return withArg(arg);
 	}
+	Option::Ptr requireFromSet(const vector<string> &list)
+	{
+		fromSet = vector<string>(list);
+		return shared_from_this();
+	}
+	Option::Ptr makeEarlyExit()
+	{
+		earlyExit = true;
+		return shared_from_this();
+	}
+
 	template <typename Func>
-	Option &then(Func &&func)
+	Option::Ptr then(Func &&func)
 	{
 		callbacks.push_back(detail::wrapCaller(std::forward<Func>(func)));
-		return *this;
+		return shared_from_this();
+	}
+	template <typename Obj, typename Func>
+	Option::Ptr then(Obj &obj, Func func)
+	{
+		return then([&obj, func](const Parser &parser) { return (obj.*func)(parser); });
+	}
+	template <typename Obj, typename Func>
+	Option::Ptr then(Obj *obj, Func func)
+	{
+		return then([obj, func](const Parser &parser) { return (obj->*func)(parser); });
+	}
+
+	template <typename Obj, typename Type>
+	Option::Ptr applyTo(Obj *obj, Type Obj::*member)
+	{
+		const std::string name = names.front();
+		return then([name, obj, member](const Parser &parser) { obj->*member = detail::optionValueFromParser<Type>(parser, name); return Execution::Continue; });
 	}
 	template <typename Obj, typename Type>
-	Option &applyTo(Obj *obj, Type Obj::*member)
+	Option::Ptr applyTo(Obj &obj, Type Obj::*member)
 	{
-		return then([this, obj, member](const Parser &parser) { obj->*member = detail::optionValueFromParser<Type>(parser, names.front()); return Execution::Continue; });
-	}
-	template <typename Obj, typename Type>
-	Option &applyTo(Obj &obj, Type Obj::*member)
-	{
-		return then([this, &obj, member](const Parser &parser) { obj.*member = detail::optionValueFromParser<Type>(parser, names.front()); return Execution::Continue; });
+		const std::string name = names.front();
+		return then([name, &obj, member](const Parser &parser) { obj.*member = detail::optionValueFromParser<Type>(parser, name); return Execution::Continue; });
 	}
 };
 /// Specifies a positional argument; a non-option argument of variable content following subcommands
-class PositionalArgument
+class PositionalArgument : public std::enable_shared_from_this<PositionalArgument>
 {
 	friend class Subcommand;
 	friend class Parser;
@@ -159,62 +198,69 @@ class PositionalArgument
 	/// The callbacks that will be executed
 	vector<detail::Caller> callbacks;
 
-protected:
-	explicit PositionalArgument(const string &name, const string &help, const bool repeatable, const bool optional)
-		: name(name), help(help), repeatable(repeatable), optional(optional) {}
-
 public:
+	using Ptr = std::shared_ptr<PositionalArgument>;
+
+	explicit PositionalArgument(const string &name_, const string &help_, const bool repeatable_, const bool optional_)
+		: name(name_), help(help_), repeatable(repeatable_), optional(optional_) {}
+
 	explicit PositionalArgument() {}
 
 	template <typename Func>
-	PositionalArgument &then(Func &&func)
+	PositionalArgument::Ptr then(Func &&func)
 	{
 		callbacks.push_back(detail::wrapCaller(std::forward<Func>(func)));
-		return *this;
+		return shared_from_this();
 	}
 	template <typename Obj, typename Type>
-	PositionalArgument &applyTo(Obj *obj, Type Obj::*member)
+	PositionalArgument::Ptr applyTo(Obj *obj, Type Obj::*member)
 	{
-		const string name = this->name;
-		return then([name, obj, member](const Parser &parser)
+		const string n = name;
+		return then([n, obj, member](const Parser &parser)
 		{
-			obj->*member = detail::posArgValueFromParser<Type>(parser, name);
+			obj->*member = detail::posArgValueFromParser<Type>(parser, n);
 			return Execution::Continue;
 		});
 	}
 	template <typename Obj, typename Type>
-	PositionalArgument &applyTo(Obj &obj, Type Obj::*member)
+	PositionalArgument::Ptr applyTo(Obj &obj, Type Obj::*member)
 	{
-		return then([this, &obj, member](const Parser &parser)
+		const std::string n = name;
+		return then([n, &obj, member](const Parser &parser)
 		{
-			obj.*member = detail::posArgValueFromParser<Type>(parser, name);
+			obj.*member = detail::posArgValueFromParser<Type>(parser, n);
 			return Execution::Continue;
 		});
 	}
 };
 /// A subcommand provides additional positional argument, options etc.
-class Subcommand
+class Subcommand : public std::enable_shared_from_this<Subcommand>
 {
 	friend class Parser;
 
+public:
+	using Ptr = std::shared_ptr<Subcommand>;
+
+private:
 	/// A list of synonumous names for this subcommand (like "install" and "i")
 	vector<string> names;
 	/// A help string for this command
 	string help;
 	/// A list of options attached to this command
-	vector<Option> options;
+	vector<Option::Ptr> options;
 	/// A list of positional arguments that this command expects
-	vector<PositionalArgument> positionalArguments;
+	vector<PositionalArgument::Ptr> positionalArguments;
 	/// A list of subcommands of this command
-	vector<Subcommand> commands;
+	vector<Subcommand::Ptr> commands;
 	/// The callback to be executed if this subcommand is given on the CLI
 	detail::Caller callback;
-
-protected:
-	explicit Subcommand(const vector<string> &names, const string &help)
-		: names(names), help(help) {}
+	/// The parent command of this command
+	Subcommand::Ptr parent;
 
 public:
+	explicit Subcommand(const vector<string> &names_, const string &help_, const Subcommand::Ptr &parent_)
+		: names(names_), help(help_), parent(parent_) {}
+
 	explicit Subcommand() {}
 
 	enum PositionalArgumentFlags
@@ -225,33 +271,34 @@ public:
 	};
 
 	/// Returns a map of all names for all options mapped to the respective option
-	map<string, Option> mappedOptions() const;
+	map<string, Option::Ptr> mappedOptions() const;
 	/// Returns a map of all names for all positional arguments mapped to the respective argument
-	map<string, PositionalArgument> mappedPositionals();
+	map<string, PositionalArgument::Ptr> mappedPositionals();
 	/// looks up a subcommand by name
-	Subcommand &subcommand(const string &name);
+	Subcommand::Ptr subcommand(const string &name);
 
-	PositionalArgument &withPositionalArgument(const string &arg, const string &help, const int flags = None);
-	Option &addOption(const std::initializer_list<string> &names, const string &help);
-	Subcommand &addSubcommand(const std::initializer_list<string> &names, const string &help);
+	PositionalArgument::Ptr withPositionalArgument(const string &arg, const string &help_, const int flags = None);
+	Option::Ptr addOption(const std::initializer_list<string> &names_, const string &help_);
+	Subcommand::Ptr addSubcommand(const std::initializer_list<string> &names_, const string &help_);
 	template <typename Func>
-	Subcommand &then(Func &&func)
+	Subcommand::Ptr then(Func &&func)
 	{
 		callback = detail::wrapCaller(std::forward<Func>(func));
-		return *this;
+		return shared_from_this();
 	}
 	template <typename Func>
-	Subcommand &setup(Func &&func)
+	Subcommand::Ptr setup(Func &&func)
 	{
-		func(*this);
-		return *this;
+		auto ptr = shared_from_this();
+		func(ptr);
+		return ptr;
 	}
 };
 
 class Parser
 {
 public:
-	explicit Parser(const Subcommand &cmd, const string &name, const string &version);
+	explicit Parser(const Subcommand::Ptr &cmd, const string &name, const string &version);
 
 	int parse(const int argc, const char **argv);
 
@@ -267,13 +314,15 @@ public:
 	{
 		return castValue(name, rawValue(name), detail::Identity<T>());
 	}
+	bool hasOption(const string &name) const;
 	vector<string> subcommands() const { return m_subcommands; }
 	string positionalArgument(const string &name) const;
 	vector<string> positionalArguments(const string &name) const;
+	bool hasPositionalArgument(const string &name) const;
 	const string &programName() const { return m_programName; }
 
 private:
-	const Subcommand m_rootCommand;
+	const Subcommand::Ptr m_rootCommand;
 	const string m_name;
 	const string m_version;
 
@@ -284,18 +333,21 @@ private:
 	string m_programName;
 
 	// internal result accessors
-	vector<string> rawValue(const string &name) const { return const_cast<Parser *>(this)->m_options[name]; }
+	vector<string> rawValue(const std::string name) const;
 
-	string castValue(const string &name, const vector<string> &strings, const detail::Identity<string>) const { return strings.front(); }
-	int castValue(const string &name, const vector<string> &strings, const detail::Identity<int>) const { return std::stoi(strings.front()); }
-	vector<string> castValue(const string &name, const vector<string> &strings, const detail::Identity<vector<string>>) const { return strings; }
-	vector<int> castValue(const string &name, const vector<string> &strings, const detail::Identity<vector<int>>) const
+	string castValue(const string &, const vector<string> &strings, const detail::Identity<string>) const { return strings.front(); }
+	int castValue(const string &, const vector<string> &strings, const detail::Identity<int>) const { return std::stoi(strings.front()); }
+	vector<string> castValue(const string &, const vector<string> &strings, const detail::Identity<vector<string>>) const { return strings; }
+	vector<int> castValue(const string &, const vector<string> &strings, const detail::Identity<vector<int>>) const
 	{
 		vector<int> result;
 		std::transform(strings.begin(), strings.end(), std::back_inserter(result), [](const string &string){ return std::stoi(string); });
 		return result;
 	}
 	bool castValue(const string &name, const vector<string> &, const detail::Identity<bool>) const;
+
+	// showHelp helper
+	void printOptionsTable(const vector<Option::Ptr> &ptr) const;
 };
 
 class ParserBuilder : public Subcommand
@@ -303,16 +355,18 @@ class ParserBuilder : public Subcommand
 	const string m_name;
 	const string m_version;
 public:
+	using Ptr = std::shared_ptr<ParserBuilder>;
+
 	explicit ParserBuilder(const string &name, const string &version, const string &help)
-		: Subcommand({}, help), m_name(name), m_version(version) {}
+		: Subcommand({}, help, {}), m_name(name), m_version(version) {}
 
 	// convenience methods for common options and commands
-	Option &addHelpOption();
-	Option &addVersionOption();
-	Subcommand &addListCommand();
-	Subcommand &addHelpCommand();
+	Option::Ptr addHelpOption();
+	Option::Ptr addVersionOption();
+	Subcommand::Ptr addListCommand();
+	Subcommand::Ptr addHelpCommand();
 
-	Parser build() const;
+	Parser build();
 };
 
 namespace detail
@@ -332,6 +386,8 @@ template<>
 inline vector<string> posArgValueFromParser<vector<string>>(const Parser &parser, const string &name)
 {
 	return parser.positionalArguments(name);
+}
+}
 }
 }
 }

@@ -18,4 +18,6 @@ std::string fg(const Color color, const std::string &in = std::string());
 std::string bg(const Color color, const std::string &in = std::string());
 std::string reset();
 bool isTty();
+
+int currentWidth();
 }

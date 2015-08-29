@@ -1,12 +1,13 @@
 #include "Lexer.h"
 
 #include "util/StringUtil.h"
+#include "util/Error.h"
 
 Lexer::Lexer()
 {
 }
 
-std::vector<Lexer::Token> Lexer::consume(const std::string &data)
+std::vector<Lexer::Token> Lexer::consume(const std::string &data, const std::string &filename)
 {
 	std::vector<Token> tokens;
 	SelfContainedIterator<std::string> it(data);
@@ -14,13 +15,10 @@ std::vector<Lexer::Token> Lexer::consume(const std::string &data)
 	{
 		const char next = it.next();
 		const int offset = it.index();
-		if (classifyCharacter(next) == Digit || (next == '-' && classifyCharacter(it.peekNext()) == Digit))
-		{
+		if (classifyCharacter(next) == Digit || (next == '-' && classifyCharacter(it.peekNext()) == Digit)) {
 			const std::string str = next + consumeWhile(it, [](const char c) -> bool { return classifyCharacter(c) == Digit; });
 			tokens.push_back(Token::createInteger(std::stoll(str), offset));
-		}
-		else if (classifyCharacter(next) == Letter)
-		{
+		} else if (classifyCharacter(next) == Letter) {
 			const std::string string = next + consumeWhile(it, [](const char c) -> bool
 			{
 				const CharacterClass cc = classifyCharacter(c);
@@ -38,11 +36,10 @@ std::vector<Lexer::Token> Lexer::consume(const std::string &data)
 			{
 				tokens.push_back(Token::createIdentifier(string, offset));
 			}
-		}
-		else
-		{
-			switch (next)
-			{
+		} else if (next == '/' && it.peekNext() == '/') {
+			consumeWhile(it, [](const char c) -> bool { return c != '\n'; });
+		} else {
+			switch (next) {
 			case '"':
 			{
 				bool isEscape = false;
@@ -92,8 +89,14 @@ std::vector<Lexer::Token> Lexer::consume(const std::string &data)
 			case ';':
 				tokens.push_back(Token::createSpecial(Token::SemiColon, offset));
 				break;
+			case ':':
+				tokens.push_back(Token::createSpecial(Token::Colon, offset));
+				break;
 			case ',':
 				tokens.push_back(Token::createSpecial(Token::Comma, offset));
+				break;
+			case '.':
+				tokens.push_back(Token::createSpecial(Token::Dot, offset));
 				break;
 			case '=':
 				tokens.push_back(Token::createSpecial(Token::Equal, offset));
@@ -104,7 +107,7 @@ std::vector<Lexer::Token> Lexer::consume(const std::string &data)
 			case '\t':
 				break;
 			default:
-				throw UnexpectedCharacterException(std::string("Unexpected character: ") + next + " (0x" + StringUtil::charToHexString(next) + ")", offset);
+				throw Error(std::string("Unexpected character: ") + next + " (0x" + StringUtil::charToHexString(next) + ")", offset, Error::Source(data, filename));
 			}
 		}
 	}
@@ -122,7 +125,7 @@ std::string Lexer::consumeWhile(SelfContainedIterator<std::string> &it, const st
 	return out;
 }
 
-const Lexer::CharacterClass Lexer::classifyCharacter(const char c)
+Lexer::CharacterClass Lexer::classifyCharacter(const char c)
 {
 	if (c >= '0' && c <= '9')
 	{
@@ -161,6 +164,8 @@ const std::string Lexer::Token::toString(const Type type)
 	case AngleBracketClose: return "ANGLE_BRACKET_CLOSE";
 	case SemiColon: return "SEMICOLON";
 	case Comma: return "COMMA";
+	case Colon: return "COLON";
+	case Dot: return "DOT";
 	case Equal: return "EQUAL";
 	case EndOfFile: return "EOF";
 	case Invalid: return "INVALID";

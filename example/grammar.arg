@@ -7,11 +7,12 @@ enum SiteType<UInt8> {
 struct User {
 	name String = 0;
 	email String = 1;
-	@optional
+	@verification.optional
 	age UInt8 = 2;
 	signup UInt64 = 4;
-	@doc("This can be empty")
+	@doc.brief("A list of current hobbies of this user")
 	hobbies List<String> = 3;
+	metadata Map<String, Variant<String, Int64, Bool>>;
 }
 struct Site {
 	name String = 0;

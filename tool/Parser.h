@@ -5,15 +5,10 @@
 #include "util/ArgonautsException.h"
 #include "util/SelfContainerIterator.h"
 #include "Lexer.h"
+#include "DataTypes.h"
 
-namespace Argonauts
-{
-class File;
-class Struct;
-class Enum;
-class Annotation;
-}
-
+namespace Argonauts {
+namespace Tool {
 class Parser
 {
 	using Token = Lexer::Token;
@@ -26,8 +21,8 @@ public:
 	class ParserException : public ArgonautsException
 	{
 	public:
-		explicit ParserException(const std::string &what = std::string(), const int offset = 0)
-			: ArgonautsException(what), offset(offset) {}
+		explicit ParserException(const std::string &what = std::string(), const int offset_ = 0)
+			: ArgonautsException(what), offset(offset_) {}
 
 		const int offset;
 	};
@@ -48,13 +43,16 @@ public:
 		static std::string message(const Token &actual, const std::initializer_list<Token::Type> &expected);
 	};
 
-	Argonauts::File process();
+	File process();
 
 private:
-	Argonauts::Struct consumeStruct(const std::vector<Argonauts::Annotation> &annotations);
-	Argonauts::Enum consumeEnum(const std::vector<Argonauts::Annotation> &annotations);
-	Argonauts::Annotation consumeAnnotation();
+	Struct consumeStruct(const Annotations &annotations);
+	Enum consumeEnum(const Annotations &annotations);
+	std::unordered_map<std::string, Annotations::Value> consumeAnnotation();
+	Type::Ptr consumeType();
 
 	inline Lexer::Token consumeToken(const Token::Type type) { return consumeToken({type}); }
 	Lexer::Token consumeToken(const std::initializer_list<Token::Type> &types = {Token::Invalid});
 };
+}
+}

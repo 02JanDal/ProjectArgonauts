@@ -6,32 +6,36 @@
 #include "util/StringUtil.h"
 #include "DataTypes.h"
 
-using namespace Argonauts;
+namespace Argonauts {
+namespace Tool {
 
 Parser::Parser(const std::vector<Lexer::Token> &tokens)
 	: it(tokens)
 {
 }
 
-Argonauts::File Parser::process()
+File Parser::process()
 {
 	File file;
-	std::vector<Annotation> annotations;
+	Annotations annotations;
 	while (it.hasNext())
 	{
 		const Token next = consumeToken({Token::AtSymbol, Token::Keyword_Enum, Token::Keyword_Struct, Token::EndOfFile});
 		switch (next.type)
 		{
 		case Token::AtSymbol:
-			annotations.push_back(consumeAnnotation());
+		{
+			const auto annos = consumeAnnotation();
+			annotations.values.insert(annos.begin(), annos.end());
 			break;
+		}
 		case Token::Keyword_Enum:
 			file.enums.push_back(consumeEnum(annotations));
-			annotations.clear();
+			annotations.values.clear();
 			break;
 		case Token::Keyword_Struct:
 			file.structs.push_back(consumeStruct(annotations));
-			annotations.clear();
+			annotations.values.clear();
 			break;
 		case Token::EndOfFile:
 			return file;
@@ -42,7 +46,7 @@ Argonauts::File Parser::process()
 	return file;
 }
 
-Struct Parser::consumeStruct(const std::vector<Annotation> &annotations)
+Struct Parser::consumeStruct(const Annotations &annotations)
 {
 	const Token identifier = consumeToken(Token::Identifier);
 	consumeToken(Token::CurlyBracketOpen);
@@ -50,23 +54,16 @@ Struct Parser::consumeStruct(const std::vector<Annotation> &annotations)
 
 	while (it.hasNext() && it.peekNext().type != Token::CurlyBracketClose)
 	{
-		std::vector<Annotation> annotations;
+		Annotations attributeAnnotations;
 		while (it.hasNext() && it.peekNext().type == Token::AtSymbol)
 		{
 			consumeToken(Token::AtSymbol);
-			annotations.push_back(consumeAnnotation());
+			const auto annos = consumeAnnotation();
+			attributeAnnotations.values.insert(annos.begin(), annos.end());
 		}
 
 		const Token attributeIdentifier = consumeToken(Token::Identifier);
-		const Token attributeType = consumeToken(Token::Identifier);
-
-		Token templateType;
-		if (it.peekNext().type == Token::AngleBracketOpen)
-		{
-			consumeToken(Token::AngleBracketOpen);
-			templateType = consumeToken(Token::Identifier);
-			consumeToken(Token::AngleBracketClose);
-		}
+		Type::Ptr attributeType = consumeType();
 
 		Token index;
 		if (it.peekNext().type == Token::Equal)
@@ -76,14 +73,14 @@ Struct Parser::consumeStruct(const std::vector<Annotation> &annotations)
 		}
 
 		consumeToken(Token::SemiColon);
-		attributes.emplace_back(attributeType.string, templateType.string, index.integer, attributeIdentifier.string, annotations);
+		attributes.emplace_back(attributeType, index.integer, attributeIdentifier.string, attributeAnnotations);
 	}
 
 	consumeToken(Token::CurlyBracketClose);
-	return Struct{identifier.string, attributes, annotations};
+	return Struct{identifier.string, std::move(attributes), annotations};
 }
 
-Enum Parser::consumeEnum(const std::vector<Annotation> &annotations)
+Enum Parser::consumeEnum(const Annotations &annotations)
 {
 	const Token identifier = consumeToken(Token::Identifier);
 	consumeToken(Token::AngleBracketOpen);
@@ -94,83 +91,104 @@ Enum Parser::consumeEnum(const std::vector<Annotation> &annotations)
 	std::vector<EnumEntry> entries;
 	while (it.hasNext() && it.peekNext().type != Token::CurlyBracketClose)
 	{
-		std::vector<Annotation> annotations;
+		Annotations entryAnnotations;
 		while (it.hasNext() && it.peekNext().type == Token::AtSymbol)
 		{
 			consumeToken(Token::AtSymbol);
-			annotations.push_back(consumeAnnotation());
+			const auto annos = consumeAnnotation();
+			entryAnnotations.values.insert(annos.begin(), annos.end());
 		}
 
 		const Token entryIdentifier = consumeToken(Token::Identifier);
 		consumeToken(Token::Equal);
 		const Token index = consumeToken(Token::Integer);
 		consumeToken(Token::SemiColon);
-		entries.emplace_back(entryIdentifier.string, index.integer, annotations);
+		entries.emplace_back(entryIdentifier.string, index.integer, entryAnnotations);
 	}
 
 	consumeToken(Token::CurlyBracketClose);
 	return Enum{identifier.string, type.string, entries, annotations};
 }
 
-Annotation Parser::consumeAnnotation()
+std::unordered_map<std::string, Annotations::Value> Parser::consumeAnnotation()
 {
-	const Token identifier = consumeToken(Token::Identifier);
-	std::vector<AnnotationArgument> arguments;
-	if (it.peekNext().type == Token::ParanthesisOpen)
-	{
+	std::vector<std::string> name = {consumeToken(Token::Identifier).string};
+	while (it.peekNext().type == Token::Dot) {
+		consumeToken(Token::Dot);
+		name.push_back(consumeToken(Token::Identifier).string);
+	}
+	std::unordered_map<std::string, Annotations::Value> values;
+	if (it.peekNext().type == Token::ParanthesisOpen) {
 		consumeToken(Token::ParanthesisOpen);
-		while (it.hasNext() && it.peekNext().type != Token::ParanthesisClose)
-		{
-			AnnotationArgument argument;
-			const Token first = consumeToken({Token::Identifier, Token::String, Token::Integer});
+		std::vector<std::string> currentName = name;
+		while (true) {
+			const Token first = consumeToken({Token::Identifier, Token::String, Token::Integer, Token::ParanthesisClose, Token::Comma});
+			if (first.type == Token::ParanthesisClose) {
+				break;
+			}
+
 			switch (first.type)
 			{
 			case Token::Identifier:
 			{
-				if (it.peekNext().type == Token::Equal)
-				{
-					consumeToken(Token::Equal);
-					const Token second = consumeToken({Token::Identifier, Token::String, Token::Integer});
-					argument.key = first.string;
-					switch (second.type)
-					{
-					case Token::Identifier:
-						argument.valueString = second.string;
-						argument.valueType = AnnotationArgument::Identifier;
-						break;
-					case Token::String:
-						argument.valueString = second.string;
-						argument.valueType = AnnotationArgument::String;
-						break;
-					case Token::Integer:
-						argument.valueInteger = second.integer;
-						argument.valueType = AnnotationArgument::Integer;
-					default:
-						ASSERT(false); // should NEVER happen
-					}
+				while (it.peekNext().type == Token::Dot) {
+					consumeToken(Token::Dot);
+					currentName.push_back(consumeToken(Token::Identifier).string);
 				}
-				else
+				consumeToken(Token::Equal);
+				const Token second = consumeToken({Token::Identifier, Token::String, Token::Integer});
+				switch (second.type)
 				{
-					argument.valueString = first.string;
-					argument.valueType = AnnotationArgument::Identifier;
+				case Token::Identifier:
+				case Token::String:
+					values.emplace(StringUtil::joinStrings(currentName, "."), second.string);
+					currentName = name;
+					break;
+				case Token::Integer:
+					values.emplace(StringUtil::joinStrings(currentName, "."), second.integer);
+					currentName = name;
+					break;
+				default:
+					ASSERT(false); // should NEVER happen
 				}
 				break;
 			}
 			case Token::String:
-				argument.valueString = first.string;
-				argument.valueType = AnnotationArgument::String;
+				values.emplace(StringUtil::joinStrings(name, "."), first.string);
 				break;
 			case Token::Integer:
-				argument.valueInteger = first.integer;
-				argument.valueType = AnnotationArgument::Integer;
+				values.emplace(StringUtil::joinStrings(name, "."), first.integer);
+				break;
 			default:
 				ASSERT(false); // should NEVER happen
 			}
-			arguments.push_back(argument);
+
+			const Token next = consumeToken({Token::ParanthesisClose, Token::Comma});
+			if (next.type == Token::ParanthesisClose) {
+				break;
+			}
 		}
-		consumeToken(Token::ParanthesisClose);
+	} else {
+		values.emplace(StringUtil::joinStrings(name, "."), std::string());
 	}
-	return Annotation{identifier.string, arguments};
+	return values;
+}
+
+Type::Ptr Parser::consumeType()
+{
+	const Token id = consumeToken(Token::Identifier);
+	std::vector<Type::Ptr> args;
+	if (it.peekNext().type == Token::AngleBracketOpen) {
+		consumeToken(Token::AngleBracketOpen);
+		while (true) {
+			args.push_back(consumeType());
+			const Token next = consumeToken({Token::AngleBracketClose, Token::Comma});
+			if (next.type == Token::AngleBracketClose) {
+				break;
+			}
+		}
+	}
+	return std::make_unique<Type>(id.string, std::move(args));
 }
 
 Lexer::Token Parser::consumeToken(const std::initializer_list<Token::Type> &types)
@@ -180,7 +198,9 @@ Lexer::Token Parser::consumeToken(const std::initializer_list<Token::Type> &type
 		throw UnexpectedEndOfTokenStreamException();
 	}
 	const Token next = it.next();
-	if (std::find(types.begin(), types.end(), next.type) == types.end() && types.size() == 1 && *(types.begin()) == Token::Invalid)
+	if (std::find(types.begin(), types.end(), next.type) == types.end() &&
+			types.size() >= 1 && // if types is empty we allow any type of token
+			*(types.begin()) == Token::Invalid)
 	{
 		throw UnexpectedTokenException(next, types);
 	}
@@ -189,7 +209,6 @@ Lexer::Token Parser::consumeToken(const std::initializer_list<Token::Type> &type
 		return next;
 	}
 }
-
 
 std::string Parser::UnexpectedTokenException::message(const Parser::Token &actual, const std::initializer_list<Parser::Token::Type> &expected)
 {
@@ -208,4 +227,7 @@ std::string Parser::UnexpectedTokenException::message(const Parser::Token &actua
 		expectedString = StringUtil::joinStrings(typeStrings, ", ");
 	}
 	return std::string("Got token ") + Token::toString(actual.type) + ", expected " + expectedString;
+}
+
+}
 }
