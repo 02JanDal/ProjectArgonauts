@@ -1,3 +1,19 @@
+/*
+ * Copyright 2015 Jan Dalheimer <jan@dalheimer.de>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "util/CmdParser.h"
 #include "util/Error.h"
 #include "util/TermUtil.h"
@@ -13,7 +29,8 @@ using namespace Argonauts::Util;
  *
  * The given input data should start of with metadata rows in the format `<key>: <value>`. `<key>` can be `arguments`
  * or `includes`. In the case of `arguments`, the `<value>` is copied verbatim as the argument list for the generated
- * function. `includes` are split up at ',' and then each is added as an #include line in the final header.
+ * function. `includes` are split up at ',' and then each is added as an #include line in the final header. Rows
+ * that do not start with a recognized key are simply skipped, this can be used to add a license header or similar.
  *
  * After those rows an empty row must follow, after which the actual template contents are. These can be anything, but
  * the following are handled specially:
