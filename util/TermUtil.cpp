@@ -12,61 +12,62 @@
 # warning Windows support has not yet been implemented. No colors will be shown.
 #endif
 
-namespace TermUtil
-{
-namespace detail
-{
+namespace Argonauts {
+namespace Util {
+namespace Term {
+namespace detail {
+
 #ifdef OS_UNIX
 static std::string getStyleCode(const Style style)
 {
 	switch (style)
 	{
-	case TermUtil::Bold: return "\033[1m";
-	case TermUtil::Dark: return "\033[2m";
-	case TermUtil::Underline: return "\033[4m";
-	case TermUtil::Blink: return "\033[5m";
-	case TermUtil::Reverse: return "\033[7m";
-	case TermUtil::Concealed: return "\033[8m";
+	case Term::Bold: return "\033[1m";
+	case Term::Dark: return "\033[2m";
+	case Term::Underline: return "\033[4m";
+	case Term::Blink: return "\033[5m";
+	case Term::Reverse: return "\033[7m";
+	case Term::Concealed: return "\033[8m";
 	}
 }
 static std::string getStyleEndCode(const Style style)
 {
 	switch (style)
 	{
-	case TermUtil::Bold: return "\033[22m";
-	case TermUtil::Dark: return "\033[22m";
-	case TermUtil::Underline: return "\033[24m";
-	case TermUtil::Blink: return "\033[25m";
-	case TermUtil::Reverse: return "\033[27m";
-	case TermUtil::Concealed: return "\033[38m";
+	case Term::Bold: return "\033[22m";
+	case Term::Dark: return "\033[22m";
+	case Term::Underline: return "\033[24m";
+	case Term::Blink: return "\033[25m";
+	case Term::Reverse: return "\033[27m";
+	case Term::Concealed: return "\033[38m";
 	}
 }
 static std::string getFGColorCode(const Color color)
 {
 	switch (color)
 	{
-	case TermUtil::Grey: return "\033[30m";
-	case TermUtil::Red: return "\033[31m";
-	case TermUtil::Green: return "\033[32m";
-	case TermUtil::Yellow: return "\033[33m";
-	case TermUtil::Blue: return "\033[34m";
-	case TermUtil::Magenta: return "\033[35m";
-	case TermUtil::Cyan: return "\033[36m";
-	case TermUtil::White: return "\033[37m";
+	case Term::Grey: return "\033[30m";
+	case Term::Red: return "\033[31m";
+	case Term::Green: return "\033[32m";
+	case Term::Yellow: return "\033[33m";
+	case Term::Blue: return "\033[34m";
+	case Term::Magenta: return "\033[35m";
+	case Term::Cyan: return "\033[36m";
+	case Term::White: return "\033[37m";
 	}
 }
 static std::string getBGColorCode(const Color color)
 {
 	switch (color)
 	{
-	case TermUtil::Grey: return "\033[40m";
-	case TermUtil::Red: return "\033[41m";
-	case TermUtil::Green: return "\033[42m";
-	case TermUtil::Yellow: return "\033[43m";
-	case TermUtil::Blue: return "\033[44m";
-	case TermUtil::Magenta: return "\033[45m";
-	case TermUtil::Cyan: return "\033[46m";
-	case TermUtil::White: return "\033[47m";
+	case Term::Grey: return "\033[40m";
+	case Term::Red: return "\033[41m";
+	case Term::Green: return "\033[42m";
+	case Term::Yellow: return "\033[43m";
+	case Term::Blue: return "\033[44m";
+	case Term::Magenta: return "\033[45m";
+	case Term::Cyan: return "\033[46m";
+	case Term::White: return "\033[47m";
 	}
 }
 #endif
@@ -162,4 +163,6 @@ int currentWidth()
 #endif
 }
 
+}
+}
 }

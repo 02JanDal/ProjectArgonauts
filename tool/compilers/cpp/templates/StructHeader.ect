@@ -5,6 +5,8 @@ includes: <vector>, <string>, <unordered_set>, "DataTypes.h", "util/StringUtil.h
 
 #pragma once
 
+<% using namespace Argonauts::Util; %>
+
 #include <cstdlib>
 <% for (const std::string &header : typeHeaders) { %>
 	<% if (header.find(".arg.h") != std::string::npos) { %>
@@ -13,7 +15,7 @@ includes: <vector>, <string>, <unordered_set>, "DataTypes.h", "util/StringUtil.h
 #include <<%= header %>>
 	<% } %>
 <% } %>
-#include <ArgonautsBase.h>
+#include <Argonauts.h>
 
 namespace Argonauts {
 namespace Runtime { class Serializer; }
@@ -31,7 +33,7 @@ public:
 	public:
 		explicit Builder() {}
 		explicit Builder(const <%= structure.name %> &original)
-			: <%= StringUtil::joinStrings(builderCopyInitList, ", ") %> {}
+			: <%= String::joinStrings(builderCopyInitList, ", ") %> {}
 
 <% for (const Argonauts::Tool::Attribute &attribute : structure.members) { %>
 		inline <%= types->fullType(attribute) %> <%= attribute.name %>() const { return m_<%= attribute.name %>; }
@@ -46,7 +48,7 @@ public:
 		inline <%= structure.name %> build() const
 		{
 			verify();
-			return <%= structure.name %>(<%= StringUtil::joinStrings(builderBuildArgList, ", ") %>);
+			return <%= structure.name %>(<%= String::joinStrings(builderBuildArgList, ", ") %>);
 		}
 		inline operator <%= structure.name %>() { return build(); }
 
@@ -67,8 +69,8 @@ public:
 <% } %>
 
 private:
-	inline explicit <%= structure.name %>(<%= StringUtil::joinStrings(constructorArgs, ", ")%>)
-		: <%= StringUtil::joinStrings(constructorInitList, ", ") %> {}
+	inline explicit <%= structure.name %>(<%= String::joinStrings(constructorArgs, ", ")%>)
+		: <%= String::joinStrings(constructorInitList, ", ") %> {}
 
 	<% for (const Argonauts::Tool::Attribute &attribute : structure.members) { %>
 		<%= types->fullType(attribute) %> m_<%= attribute.name %>;

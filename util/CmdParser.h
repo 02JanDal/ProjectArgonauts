@@ -12,6 +12,7 @@
 namespace Argonauts {
 namespace Util {
 namespace CLI {
+
 using std::string;
 using std::vector;
 using std::map;
@@ -69,9 +70,9 @@ template <typename T>
 inline T posArgValueFromParser(const Parser &parser, const string &name);
 }
 
-class ParserException : public ArgonautsException
+class ParserException : public Exception
 {
-	using ArgonautsException::ArgonautsException;
+	using Exception::Exception;
 };
 class ParserBuildException : public ParserException
 {
@@ -388,6 +389,7 @@ inline vector<string> posArgValueFromParser<vector<string>>(const Parser &parser
 	return parser.positionalArguments(name);
 }
 }
+
 }
 }
 }

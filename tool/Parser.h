@@ -12,17 +12,17 @@ namespace Tool {
 class Parser
 {
 	using Token = Lexer::Token;
-	using Iterator = SelfContainedIterator<std::vector<Token>>;
+	using Iterator = Util::SelfContainedIterator<std::vector<Token>>;
 
 	Iterator it;
 public:
 	explicit Parser(const std::vector<Lexer::Token> &tokens);
 
-	class ParserException : public ArgonautsException
+	class ParserException : public Util::Exception
 	{
 	public:
 		explicit ParserException(const std::string &what = std::string(), const int offset_ = 0)
-			: ArgonautsException(what), offset(offset_) {}
+			: Util::Exception(what), offset(offset_) {}
 
 		const int offset;
 	};
@@ -48,8 +48,9 @@ public:
 private:
 	Struct consumeStruct(const Annotations &annotations);
 	Enum consumeEnum(const Annotations &annotations);
-	std::unordered_map<std::string, Annotations::Value> consumeAnnotation();
+	std::unordered_multimap<PositionedString, Annotations::Value> consumeAnnotation();
 	Type::Ptr consumeType();
+	PositionedString consumeAttributeName();
 
 	inline Lexer::Token consumeToken(const Token::Type type) { return consumeToken({type}); }
 	Lexer::Token consumeToken(const std::initializer_list<Token::Type> &types = {Token::Invalid});

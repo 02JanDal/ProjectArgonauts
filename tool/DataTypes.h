@@ -10,11 +10,62 @@
 namespace Argonauts {
 namespace Tool {
 
+// Wraps a value, like a string or an integer, with information about where in the input stream it occured
+template <typename T>
+struct PositionedValue
+{
+	PositionedValue(const T &value_, const int position_ = -1) : value(value_), position(position_) {}
+
+	T value;
+	int position;
+
+	operator T() const { return value; }
+
+	bool operator==(const T &other) const { return value == other; }
+	bool operator!=(const T &other) const { return value != other; }
+	bool operator==(const PositionedValue<T> &other) const { return value == other.value; }
+	bool operator!=(const PositionedValue<T> &other) const { return value == other.value; }
+};
+using PositionedString = PositionedValue<std::string>;
+using PositionedInt64 = PositionedValue<int64_t>;
+}
+}
+template <typename T>
+T operator+(const T &a, const Argonauts::Tool::PositionedValue<T> &b)
+{
+	return a + b.value;
+}
+
+namespace std {
+template <>
+struct hash<Argonauts::Tool::PositionedString>
+{
+	std::size_t operator()(const Argonauts::Tool::PositionedString &string) const
+	{
+		return std::hash<std::string>()(string.value);
+	}
+};
+inline std::string to_string(const Argonauts::Tool::PositionedString &str) { return str.value; }
+}
+
+namespace Argonauts {
+namespace Tool {
+
 struct Annotations
 {
-	using Value = Util::Variant<std::string, int64_t>;
+	using Value = PositionedValue<Util::Variant<std::string, int64_t>>;
 
-	std::unordered_map<std::string, Value> values;
+	std::unordered_multimap<PositionedString, Value> values;
+
+	bool contains(const std::string &name) const { return values.find(name) != values.end(); }
+	std::string getString(const std::string &name, const std::string &def = std::string()) const;
+	std::vector<std::string> getStrings(const std::string &name) const;
+	int64_t getInt(const std::string &name) const;
+
+	// convenience: doc.*
+	bool hasDocumentation() const { return contains("doc") || contains("doc.brief"); }
+	std::string docBrief() const { return getString(contains("doc.brief") ? "doc.brief" : "doc"); }
+	std::string docExtended() const { return getString("doc.extended"); }
 };
 
 struct Type
@@ -53,29 +104,32 @@ struct Type
 
 	bool compare(const Ptr &other) const;
 
-	std::string name;
+	std::string toString() const;
+
+	PositionedString name;
 	std::vector<Type::Ptr> templateArguments;
 
-	explicit Type(const std::string &name_, std::vector<Type::Ptr> &&args) : name(name_), templateArguments(std::forward<std::vector<Type::Ptr>>(args)) {}
+	explicit Type(const PositionedString &name_, std::vector<Type::Ptr> &&args) : name(name_), templateArguments(std::forward<std::vector<Type::Ptr>>(args)) {}
 	template <typename... Args>
-	static Type::Ptr create(const std::string &name, Args &&... args) { return std::make_shared<Type>(name, std::vector<Type::Ptr>({std::forward<std::vector<Type::Ptr>>(args)...})); }
+	static Type::Ptr create(const PositionedString &name, Args &&... args) { return std::make_shared<Type>(name, std::vector<Type::Ptr>({std::forward<std::vector<Type::Ptr>>(args)...})); }
 };
 
 struct Attribute
 {
 	Type::Ptr type;
 
-	int index;
-	std::string name;
+	PositionedInt64 index;
+	PositionedString name;
 
 	Annotations annotations;
 
-	explicit Attribute(Type::Ptr &type_, const int index_, const std::string &name_, const Annotations &annotations_)
+	explicit Attribute(Type::Ptr &type_, const PositionedInt64 index_, const PositionedString &name_, const Annotations &annotations_)
 		: type(std::forward<Type::Ptr>(type_)), index(index_), name(name_), annotations(annotations_) {}
 };
 struct Struct
 {
-	std::string name;
+	PositionedString includes;
+	PositionedString name;
 	std::vector<Attribute> members;
 
 	Annotations annotations;
@@ -84,20 +138,27 @@ struct Struct
 };
 struct EnumEntry
 {
-	std::string name;
-	int64_t value;
+	PositionedString name;
+	PositionedInt64 value;
 
 	Annotations annotations;
 
-	explicit EnumEntry(const std::string &name_, const int64_t value_, const Annotations &annotations_)
+	explicit EnumEntry(const PositionedString &name_, const PositionedInt64 value_, const Annotations &annotations_)
 		: name(name_), value(value_), annotations(annotations_) {}
 };
 struct Enum
 {
-	std::string name;
-	std::string type;
+	PositionedString name;
+	PositionedString type;
 	std::vector<EnumEntry> entries;
 
+	Annotations annotations;
+};
+
+struct Using
+{
+	PositionedString name;
+	Type::Ptr type;
 	Annotations annotations;
 };
 
@@ -105,6 +166,16 @@ struct File
 {
 	std::vector<Struct> structs;
 	std::vector<Enum> enums;
+	std::vector<Using> usings;
 };
+
+enum LexAndParseFlags
+{
+	NoFlags = 0x0,
+	ResolveAliases = 0x1,
+	ResolveIncludes = 0x2
+};
+File lexAndParse(const std::string &data, const std::string &filename, const int flags = 0);
+
 }
 }

@@ -2,8 +2,10 @@
 
 #include <string>
 
-namespace TermUtil
-{
+namespace Argonauts {
+namespace Util {
+namespace Term {
+
 enum Color
 {
 	Grey, Red, Green, Yellow, Blue, Magenta, Cyan, White
@@ -20,4 +22,7 @@ std::string reset();
 bool isTty();
 
 int currentWidth();
+
+}
+}
 }

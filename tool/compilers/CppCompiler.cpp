@@ -8,7 +8,6 @@
 #include <boost/filesystem.hpp>
 
 #include "util/CmdParser.h"
-#include "util/StringUtil.h"
 #include "tool/DataTypes.h"
 #include "cpp/TypeProviders.h"
 
@@ -122,16 +121,16 @@ void openFileAndCall(const std::string &filename, const Type &data, Func &&func,
 	filesystem::path path = filesystem::path(filename).parent_path();
 	if (!filesystem::exists(path)) {
 		if (!filesystem::create_directories(path)) {
-			throw ArgonautsException(std::string("Unable to create parent directories for ") + filename);
+			throw Util::Exception(std::string("Unable to create parent directories for ") + filename);
 		}
 	}
 	if (filesystem::exists(filesystem::path(filename)) && filesystem::is_regular_file(path)) {
-		throw ArgonautsException(std::string("'") + filename + "' already exists but is not a file");
+		throw Util::Exception(std::string("'") + filename + "' already exists but is not a file");
 	}
 
 	std::ofstream stream(filename);
 	if (!stream.good()) {
-		throw ArgonautsException(std::string("Unable to open file '") + filename + "' for writing");
+		throw Util::Exception(std::string("Unable to open file '") + filename + "' for writing");
 	}
 	func(stream, data, args...);
 }

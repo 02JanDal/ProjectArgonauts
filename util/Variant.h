@@ -3,12 +3,10 @@
 #include <type_traits>
 #include <stdexcept>
 
-namespace Argonauts
-{
-namespace Util
-{
-namespace detail
-{
+namespace Argonauts {
+namespace Util {
+namespace detail {
+
 template <std::size_t N, typename... Types>
 struct TypeHelper;
 template <std::size_t N, typename T, typename... Types>
@@ -208,5 +206,6 @@ public:
 		return m_which == Position<T>::index;
 	}
 };
+
 }
 }

@@ -1,10 +1,11 @@
 #include "DocCompiler.h"
 
+#include <iostream>
+#include <boost/filesystem.hpp>
+
 #include "util/CmdParser.h"
 #include "util/FSUtil.h"
 #include "tool/DataTypes.h"
-
-#include <boost/filesystem.hpp>
 
 #include "templates/Doc.ect.h"
 
@@ -25,12 +26,19 @@ bool DocCompiler::run(const Util::CLI::Parser &parser, const File &file)
 	if (!boost::filesystem::exists(m_outdir)) {
 		boost::filesystem::create_directories(m_outdir);
 	} else if (!boost::filesystem::is_directory(m_outdir)) {
-		throw ArgonautsException(std::string("Path to ") + m_outdir + " contains a non-directory");
+		throw Util::Exception(std::string("Path to ") + m_outdir + " contains a non-directory");
 	} else if (boost::filesystem::exists(outFile) && !boost::filesystem::is_regular_file(outFile)) {
-		throw ArgonautsException(std::string("Existing item ") + outFile.string() + " is not a regular file");
+		throw Util::Exception(std::string("Existing item ") + outFile.string() + " is not a regular file");
 	}
-	FSUtil::writeFile(outFile.string(), generateDoc(boost::filesystem::path(m_outdir).stem().string(), file));
+
+	Util::FS::writeFile(outFile.string(), generateDoc(boost::filesystem::path(parser.positionalArgument("file")).stem().string(), file));
+	std::cout << "Generated documentation for " << parser.positionalArgument("file") << " in " << outFile.string() << std::endl;
 	return true;
+}
+
+int DocCompiler::resolverFlags() const
+{
+	return ResolveIncludes;
 }
 }
 }

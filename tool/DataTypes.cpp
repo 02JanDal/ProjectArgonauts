@@ -1,6 +1,11 @@
 #include "DataTypes.h"
 
 #include "util/StringUtil.h"
+#include "util/Error.h"
+
+#include "Lexer.h"
+#include "Parser.h"
+#include "Resolver.h"
 
 namespace Argonauts {
 namespace Tool {
@@ -48,6 +53,19 @@ bool Type::compare(const Type::Ptr &other) const
 	return true;
 }
 
+std::string Type::toString() const
+{
+	std::string out = name;
+	if (!templateArguments.empty()) {
+		std::vector<std::string> children;
+		for (const auto &child : templateArguments) {
+			children.push_back(child->toString());
+		}
+		out += '<' + Util::String::joinStrings(children, ", ") + '>';
+	}
+	return out;
+}
+
 std::vector<Type::Ptr> Struct::allTypes() const
 {
 	std::vector<Type::Ptr> types;
@@ -68,6 +86,51 @@ std::vector<Type::Ptr> Struct::allTypes() const
 		}
 	}
 	return types;
+}
+
+std::string Annotations::getString(const std::string &name, const std::string &def) const
+{
+	if (!contains(name)) {
+		return def;
+	}
+	const Value value = values.find(name)->second;
+	if (value.value.is<int64_t>()) {
+		return std::to_string(value.value.get<int64_t>());
+	} else {
+		return value.value.get<std::string>();
+	}
+}
+std::vector<std::string> Annotations::getStrings(const std::string &name) const
+{
+	std::vector<std::string> out;
+	for (const auto &pair : values) {
+		if (pair.first == name) {
+			out.push_back(pair.second.value.get<std::string>());
+		}
+	}
+	return out;
+}
+int64_t Annotations::getInt(const std::string &name) const
+{
+	return contains(name) ? values.find(name)->second.value.get<int64_t>() : -1;
+}
+
+File lexAndParse(const std::string &data, const std::string &filename, const int flags)
+{
+	try {
+		Resolver resolver(Parser(Lexer().consume(data, filename)).process());
+		if (flags & ResolveAliases) {
+			resolver.resolveAliases();
+		}
+		if (flags & ResolveIncludes) {
+			resolver.resolveIncludes();
+		}
+		return resolver.result();
+	} catch (Parser::ParserException &e) {
+		throw Util::Error(e.what(), e.offset, Util::Error::Source(data, filename));
+	} catch (Resolver::ResolverError &e) {
+		throw Util::Error(e.what(), e.offset, Util::Error::Source(data, filename));
+	}
 }
 
 }

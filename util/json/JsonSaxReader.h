@@ -26,7 +26,7 @@ public:
 
 	const std::string &errorMessage() const { return m_error; }
 	int errorOffset() const { return m_offset; }
-	Error error(const std::string &data = "", const std::string &filename = "<unknown>") const { return Error(m_error, m_offset, Error::Source(data, filename)); }
+	Error error(const std::string &data = "", const std::string &filename = "<unknown>") const { return Error(m_error, std::size_t(m_offset), Error::Source(data, filename)); }
 	bool isError() const { return !m_error.empty(); }
 
 private: // internal state

@@ -29,7 +29,10 @@ protected:
 	bool reportError(const char *str, Args&&... args)
 	{
 		char buf[512];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-security"
 		std::snprintf(buf, 512, str, std::forward<Args>(args)...);
+#pragma clang diagnostic pop
 		m_error = buf;
 		return false;
 	}

@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <tuple>
-#include <boost/format.hpp>
 
 #include "StringUtil.h"
 #include "TermUtil.h"
@@ -12,7 +11,7 @@ namespace Util {
 namespace CLI {
 void Parser::printOptionsTable(const vector<std::shared_ptr<Option>> &options) const
 {
-	const std::size_t maxWidth = TermUtil::currentWidth() != 0 ? TermUtil::currentWidth() : 120;
+	const int maxWidth = Term::currentWidth() != 0 ? Term::currentWidth() : 120;
 
 	vector<std::tuple<string, string, string>> rows;
 
@@ -48,7 +47,7 @@ void Parser::printOptionsTable(const vector<std::shared_ptr<Option>> &options) c
 		string help2;
 		if (!option->fromSet.empty())
 		{
-			help2 += "Allowed values: " + StringUtil::joinStrings(option->fromSet, ", ");
+			help2 += "Allowed values: " + String::joinStrings(option->fromSet, ", ");
 		}
 		rows.push_back(std::make_tuple(names, help1, help2));
 	}
@@ -57,7 +56,7 @@ void Parser::printOptionsTable(const vector<std::shared_ptr<Option>> &options) c
 	for (const auto &row : rows)
 	{
 		const std::size_t length = std::get<0>(row).size();
-		if (length >= (maxWidth / 2))
+		if (length >= std::size_t(maxWidth / 2))
 		{
 			continue;
 		}
@@ -69,9 +68,9 @@ void Parser::printOptionsTable(const vector<std::shared_ptr<Option>> &options) c
 		const string opts = std::get<0>(row);
 		std::cout << "\t" << opts;
 		std::size_t helpOffset;
-		if (opts.size() >= (maxWidth / 2))
+		if (opts.size() >= std::size_t(maxWidth / 2))
 		{
-			helpOffset = maxWidth / 2;
+			helpOffset = std::size_t(maxWidth / 2);
 			std::cout << "\n";
 		}
 		else
@@ -79,7 +78,7 @@ void Parser::printOptionsTable(const vector<std::shared_ptr<Option>> &options) c
 			helpOffset = longestOptionString + 2;
 		}
 
-		vector<string> lines = StringUtil::splitStrings(std::get<1>(row), "\n");
+		vector<string> lines = String::splitStrings(std::get<1>(row), "\n");
 		if (!std::get<2>(row).empty())
 		{
 			lines.push_back(std::get<2>(row));
@@ -278,7 +277,7 @@ int Parser::parse(const int argc, const char **argv)
 		const PositionalArgument::Ptr arg = positionals[name];
 		if (argIt == positional.end() && !arg->optional)
 		{
-			throw MissingRequiredPositionalArgumentException(std::string("Missing required positional argument: ") + TermUtil::style(TermUtil::Bold, '<' + arg->name + '>'));
+			throw MissingRequiredPositionalArgumentException(std::string("Missing required positional argument: ") + Term::style(Term::Bold, '<' + arg->name + '>'));
 		}
 		if (argIt != positional.end())
 		{
@@ -300,11 +299,11 @@ int Parser::parse(const int argc, const char **argv)
 		const bool wasNotGiven = m_options.count(pair.second->names.front()) == 0;
 		if (pair.second->isRequired && wasNotGiven)
 		{
-			throw MissingRequiredOptionException(string("Missing required option: ") + TermUtil::style(TermUtil::Bold, pair.second->names.front()));
+			throw MissingRequiredOptionException(string("Missing required option: ") + Term::style(Term::Bold, pair.second->names.front()));
 		}
 		if (pair.second->isArgumentRequired && !wasNotGiven && m_options[pair.second->names.front()].empty())
 		{
-			throw MissingRequiredOptionArgument(string("Missing required argument to option: ") + TermUtil::style(TermUtil::Bold, pair.second->names.front()));
+			throw MissingRequiredOptionArgument(string("Missing required argument to option: ") + Term::style(Term::Bold, pair.second->names.front()));
 		}
 		if (!wasNotGiven && !pair.second->fromSet.empty())
 		{
@@ -314,7 +313,7 @@ int Parser::parse(const int argc, const char **argv)
 			{
 				if (std::find(allowed.begin(), allowed.end(), *it) == allowed.end())
 				{
-					throw ArgumentNotInSetException(string("The given argument ") + *it + "is not in the set of allowed arguments (" + StringUtil::joinStrings(allowed, ", ") + ")");
+					throw ArgumentNotInSetException(string("The given argument ") + *it + "is not in the set of allowed arguments (" + String::joinStrings(allowed, ", ") + ")");
 				}
 			}
 		}
@@ -325,7 +324,7 @@ int Parser::parse(const int argc, const char **argv)
 		{
 			if (!arg->optional && m_positionalArgs.count(arg->name) == 0)
 			{
-				throw MissingRequiredPositionalArgumentException(string("Missing required positional argument: ") + TermUtil::style(TermUtil::Bold, arg->name));
+				throw MissingRequiredPositionalArgumentException(string("Missing required positional argument: ") + Term::style(Term::Bold, arg->name));
 			}
 		}
 	}
@@ -423,7 +422,7 @@ bool Parser::castValue(const std::string &name, const vector<std::string> &, con
 
 Execution Parser::showHelp(const vector<string> &subcommands) const
 {
-	using namespace TermUtil;
+	using namespace Term;
 
 	vector<Option::Ptr> options = m_rootCommand->options;
 	vector<PositionalArgument::Ptr> posArgs = m_rootCommand->positionalArguments;
@@ -455,7 +454,7 @@ Execution Parser::showHelp(const vector<string> &subcommands) const
 			}
 
 			std::reverse(names.begin(), names.end());
-			str += ' ' + StringUtil::joinStrings(names, " ");
+			str += ' ' + String::joinStrings(names, " ");
 		}
 		str += " [OPTIONS]";
 		vector<PositionalArgument::Ptr> positionals;
@@ -514,7 +513,7 @@ Execution Parser::showHelp(const vector<string> &subcommands) const
 }
 Execution Parser::showList(const vector<string> &subcommands) const
 {
-	using namespace TermUtil;
+	using namespace Term;
 
 	std::cout << style(Bold, "Available commands:") << std::endl;
 	Subcommand::Ptr command = m_rootCommand;
@@ -525,7 +524,7 @@ Execution Parser::showList(const vector<string> &subcommands) const
 
 	for (const Subcommand::Ptr &cmd : command->commands)
 	{
-		std::cout << ' ' << style(Bold, fg(Green, cmd->names.front())) << '\t' << StringUtil::firstLine(cmd->help) << std::endl;
+		std::cout << ' ' << style(Bold, fg(Green, cmd->names.front())) << '\t' << String::firstLine(cmd->help) << std::endl;
 	}
 	return Execution::ExitSuccess;
 }
@@ -640,7 +639,7 @@ Option::Ptr Subcommand::addOption(const std::initializer_list<string> &names_, c
 			{
 				if (name == newName)
 				{
-					throw ParserBuildException((boost::format("Attempted to add option '%1%'' to subcommand '%2%'', which already exists.") % newName % this->names[0]).str());
+					throw ParserBuildException(std::string("Attempted to add option '") + newName + "' to subcommand '" + this->names[0] + "', which already exists.");
 				}
 			}
 		}

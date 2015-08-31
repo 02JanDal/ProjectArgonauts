@@ -1,17 +1,96 @@
 arguments: const std::string &title, const Argonauts::Tool::File &file
-includes: "DataTypes.h"
+includes: "DataTypes.h", "util/StringUtil.h", <ctime>, "tool_config.h"
+
+<% using namespace Argonauts::Util; %>
+
+<% auto outputChooser = [&out](const std::string &title, const std::string &id, const std::string &iconName, const auto &values) { %>
+	<div class="panel panel-default">
+		<div class="panel-heading"><span class="fa fa-<%= iconName %>"></span> <%= title %></div>
+		<div class="list-group" id="<%= id %>_chooser">
+		<% for (const auto &value : values) { %>
+			<% if (value.annotations.contains("hidden")) { continue; } %>
+			<a class="list-group-item chooser" href="#/<%= value.name %>" id="choose_<%= value.name %>"><%= value.name %></a>
+		<% } %>
+		</div>
+	</div>
+<% }; %>
+
+<% auto entityFront = [&out](const auto &value, const std::string &iconName) { %>
+	<div class="panel-heading"><span class="fa fa-<%= iconName %>"></span> <%= value.name %></div>
+	<% if (value.annotations.hasDocumentation()) { %>
+	<div class="panel-body">
+		<span class="markdown"><%= value.annotations.docBrief() %></span>
+		<% if (!value.annotations.docExtended().empty()) { %>
+			<br/><span class="text-muted markdown"><%= value.annotations.docExtended() %></span>
+		<% } %>
+	</div>
+	<% } %>
+<% }; %>
+
+<% auto typeAnnotations = [&out](const auto &value) { %>
+	<% auto annos = value.annotations; %>
+	<span class="text-muted">
+		<small>
+			<% if (annos.contains("optional")) { %>
+				optional
+			<% } %>
+			<% if (value.type->isInteger()) { %>
+				<% if (annos.contains("verification.min") || annos.contains("verification.max")) { %>
+					range: [<%= annos.getString("verification.min", "&infin;") %>,<%= annos.getString("verification.max", "&infin;") %>]
+				<% } else if (annos.contains("verification.fixed")) { %>
+					equal: <%= annos.getString("verification.fixed") %>
+				<% } %>
+			<% } else if (value.type->name == "String") { %>
+				<% if (annos.contains("verification.regex")) { %>
+					regex: <samp>/<%= annos.getString("verification.regex") %>/</samp>
+				<% } else if (annos.contains("verification.format")) { %>
+					format: <%= annos.getString("verification.format") %>
+				<% } %>
+				<% if (annos.contains("verification.minLength") || annos.contains("verification.maxLength")) { %>
+					size: [<%= annos.getString("verification.minLength", "&infin;") %>,<%= annos.getString("verification.maxLength", "&infin;") %>]
+				<% } else if (annos.contains("verification.fixedLength")) { %>
+					size: <%= annos.getString("verification.fixedLength") %>
+				<% } %>
+				<% if (annos.contains("verification.oneOf")) { %>
+					oneOf: [<%= String::joinStrings(annos.getStrings("verification.oneOf"), ", ") %>]
+				<% } %>
+			<% } %>
+		</small>
+	</span>
+<% }; %>
+
+<% auto entryDoc = [&out](const auto &value) { %>
+	<% if (value.annotations.hasDocumentation()) { %>
+		<p class="list-group-item-text">
+			<span class="markdown"><%= value.annotations.docBrief() %></span>
+			<% if (!value.annotations.docExtended().empty()) { %>
+			<br/><span class="text-muted markdown"><%= value.annotations.docExtended() %></span>
+			<% } %>
+		</p>
+	<% } %>
+<% }; %>
+
+<% auto escapeForHtml = [](const std::string &in) { return String::replaceAll(String::replaceAll(in, "<", "&lt;"), ">", "&gt;"); }; %>
 
 <!DOCTYPE html>
 <html>
 	<head>
 		<title><%= title %></title>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0-alpha1/jquery.js" type="text/javascript"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore.js" type="text/javascript"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/js/bootstrap.js" type="text/javascript"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.2.2/backbone.js" type="text/javascript"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.2/marked.js" type="text/javascript"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.7/highlight.min.js" type="text/javascript"></script>
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.css"/>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css"/>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.7/styles/default.min.css"/>
 		<style>
 * { margin: 0; }
 html, body { height: 100%; }
+body {
+	padding-top: 10px;
+}
 body > div.container {
 	min-height: 100%;
 	margin-bottom: -60px;
@@ -38,21 +117,57 @@ footer div.container {
 		$(function() {
 			var AppRouter = Backbone.Router.extend({
 				routes: {
-					'struct/:name': 'struct',
-					'enum/:name': 'enum'
+					':name': 'type',
+					'': 'root'
 				},
-				struct: function(name) {
-					$('.typecontainer').hide();
-					$('.typecontainer#struct_' + name).show();
+				type: function(name) {
+					var realName = name;
+					if (_.contains([ <% for (const auto &alias : file.usings) { %>'<%= alias.name %>', <% } %>''], name)) {
+						name = 'typealiases';
+					}
+					$('.typecontainer:not(#' + name + ')').slideUp();
+					$('.typecontainer#' + name).slideDown();
+					$('.chooser').removeClass('list-group-item-info').removeClass('list-group-item-danger').removeClass('list-group-item-success');
+					$('#struct_chooser #choose_' + name).addClass('list-group-item-info');
+					$('#enum_chooser #choose_' + name).addClass('list-group-item-danger');
+					if (realName !== name) {
+						$('#using_chooser #choose_' + realName).addClass('list-group-item-success');
+						$('#type_alias_' + realName).fadeOut(400).fadeIn(200);
+					}
 				},
-				enum: function(name) {
-					$('.typecontainer').hide();
-					$('.typecontainer#enum_' + name).show();
+				root: function() {
+					this.type('__root__');
+					$('.jumbotron').slideDown();
 				}
 			});
 			window.router = new AppRouter;
 			$('.typecontainer').hide();
-			Backbone.history.start({pushState: true});
+			Backbone.history.start();
+
+			marked.setOptions({
+				highlight: function(code) { return hljs.highlightAuto(code).value; }
+			});
+			$('.markdown').each(function() {
+				if (this.innerHTML && this.innerHTML !== "" && this.innerHTML != undefined) {
+					this.innerHTML = $(marked(this.innerHTML.replace(new RegExp('@([a-z0-9_]*)', 'gi'), '[$1](#/$1)'))).html();
+				}
+			});
+			$('.type').each(function() {
+				if (this.innerHTML && this.innerHTML !== "" && this.innerHTML != undefined) {
+					this.innerHTML = this.innerHTML.replace(new RegExp('([a-z0-9_]*)', 'gi'), function(name) {
+					<% for (const auto &structure : file.structs) { %>
+						if (name === '<%= structure.name %>') { return '<a href="#/<%= structure.name %>" class="text-warning"><%= structure.name %></a>'; }
+					<% } %>
+					<% for (const auto &enumeration : file.enums) { %>
+						if (name === '<%= enumeration.name %>') { return '<a href="#/<%= enumeration.name %>" class="text-warning"><%= enumeration.name %></a>'; }
+					<% } %>
+					<% for (const auto &u : file.usings) { %>
+						if (name === '<%= u.name %>') { return '<a href="#/<%= u.name %>" class="text-warning"><%= u.name %></a>'; }
+					<% } %>
+						return name;
+					});
+				}
+			});
 		});
 		</script>
 	</head>
@@ -60,40 +175,73 @@ footer div.container {
 		<div class="container">
 			<div class="row">
 				<div class="col-lg-3">
-					<div class="panel panel-default">
-						<div class="panel-heading">Structures</div>
-						<div class="list-group">
-						<% for (const auto &structure : file.structs) { %>
-							<a class="list-group-item" href="#/struct/<%= structure.name %>"><%= structure.name %></a>
-						<% } %>
-						</div>
-					</div>
-					<div class="panel panel-default">
-						<div class="panel-heading">Enumerations</div>
-						<div class="list-group">
-						<% for (const auto &enumeration : file.enums) { %>
-							<a class="list-group-item" href="#/enum/<%= enumeration.name %>"><%= enumeration.name %></a>
-						<% } %>
-						</div>
-					</div>
+					<% outputChooser("Structures", "struct", "list-ul", file.structs); %>
+					<% outputChooser("Type Aliases", "using", "", file.usings); %>
+					<% outputChooser("Enumerations", "enum", "list-ol", file.enums); %>
 				</div>
 				<div class="col-lg-9">
 				<% for (const auto &structure : file.structs) { %>
-					<div class="panel panel-default typecontainer" id="struct_<%= structure.name %>">
-						<div class="panel-heading"><%= structure.name %></div>
+					<div class="panel panel-info typecontainer" id="<%= structure.name %>">
+						<% entityFront(structure, "list-ul"); %>
+						<ul class="list-group">
+						<% for (const auto &member : structure.members) { %>
+							<li class="list-group-item struct-member" id="struct_<%= structure.name %>_member_<%= member.name %>">
+								<h5 class="list-group-item-heading">
+									<span class="text-primary"><%= member.name %></span>
+									<span class="text-warning type"><%= escapeForHtml(member.type->toString()) %></span>
+									<% typeAnnotations(member); %>
+								</h5>
+								<% entryDoc(member); %>
+							</li>
+						<% } %>
+						</ul>
 					</div>
 				<% } %>
-				<% for (const auto &enumeration: file.enums) { %>
-					<div class="panel panel-default typecontainer" id="enum_<%= enumeration.name %>">
-						<div class="panel-heading"><%= enumeration.name %></div>
+				<div class="panel panel-success typecontainer" id="typealiases">
+					<div class="panel-heading">Type Aliases</div>
+					<ul class="list-group">
+					<% for (const auto &alias : file.usings) { %>
+						<li class="list-group-item" id="type_alias_<%= alias.name %>">
+							<h5 class="list-group-item-heading">
+								<span class="text-primary"><%= alias.name %></span>
+								<span class="text-muted"> = </span>
+								<span class="text-warning type"><%= escapeForHtml(alias.type->toString()) %></span>
+								<% typeAnnotations(alias); %>
+							</h5>
+							<% entryDoc(alias); %>
+						</li>
+					<% } %>
+				</div>
+				<% for (const auto &enumeration : file.enums) { %>
+					<div class="panel panel-danger typecontainer" id="<%= enumeration.name %>">
+						<% entityFront(enumeration, "list-ol"); %>
+						<ul class="list-group">
+						<% for (const auto &entry : enumeration.entries) { %>
+							<li class="list-group-item enum-entry" id="enum_<%= enumeration.name %>_entry_<%= entry.name %>">
+								<h5 class="list-group-item-heading">
+									<span class="text-primary"><%= entry.name %></span>
+									<span class="text-muted"> = </span>
+									<span class="text-warning"><%= entry.value %></span>
+								</h5>
+								<% entryDoc(entry); %>
+							</li>
+						<% } %>
+						</ul>
 					</div>
 				<% } %>
+					<div class="jumbotron typecontainer">
+						<h1>Welcome to the documentation for <%= title %>!</h1>
+						<p><span class="fa fa-arrow-left"></span> Select what you want information for on the right</p>
+					</div>
 				</div>
 			</div>
 		</div>
 		<footer>
 			<div class="container text-muted">
-				Generated by ProjectArgonauts
+				<% char buf[256]; %>
+				<% std::time_t time = std::time(nullptr); %>
+				<% std::strftime(buf, 256, "%F %T %Z", std::localtime(&time)); %>
+				Generated by ProjectArgonauts <%= ARG_TOOL_VERSION %> on <%= buf %>
 			</div>
 		</div>
 	<body>

@@ -2,51 +2,53 @@
 
 #include "StringUtil.h"
 
+using namespace Argonauts::Util;
+
 TEST_CASE("can convert char to hex string", "[StringUtil]") {
-	REQUIRE(StringUtil::charToHexString(0x00) == "00");
-	REQUIRE(StringUtil::charToHexString(0x01) == "01");
-	REQUIRE(StringUtil::charToHexString(0x10) == "10");
-	REQUIRE(StringUtil::charToHexString(0xff) == "ff");
+	REQUIRE(String::charToHexString(0x00) == "00");
+	REQUIRE(String::charToHexString(0x01) == "01");
+	REQUIRE(String::charToHexString(0x10) == "10");
+	REQUIRE(String::charToHexString(0xff) == "ff");
 }
 
 TEST_CASE("can join strings", "[StringUtil]") {
-	REQUIRE(StringUtil::joinStrings({"a", "b", "c"}, "") == "abc");
-	REQUIRE(StringUtil::joinStrings({"a", "b", "c"}, ", ") == "a, b, c");
-	REQUIRE(StringUtil::joinStrings({"a", "", "c"}, ", ") == "a, , c");
+	REQUIRE(String::joinStrings({"a", "b", "c"}, "") == "abc");
+	REQUIRE(String::joinStrings({"a", "b", "c"}, ", ") == "a, b, c");
+	REQUIRE(String::joinStrings({"a", "", "c"}, ", ") == "a, , c");
 }
 
 TEST_CASE("can split a string", "[StringUtil]") {
-	REQUIRE(StringUtil::splitStrings("", ";") == std::vector<std::string>());
-	REQUIRE(StringUtil::splitStrings("a", ";") == std::vector<std::string>({"a"}));
-	REQUIRE(StringUtil::splitStrings("asdf;bdeaf", ";") == std::vector<std::string>({"asdf", "bdeaf"}));
-	REQUIRE(StringUtil::splitStrings("asdf;bdeaf;foo", ";") == std::vector<std::string>({"asdf", "bdeaf", "foo"}));
-	REQUIRE(StringUtil::splitStrings("asdf;bdeaf;;foo;", ";") == std::vector<std::string>({"asdf", "bdeaf", "", "foo", ""}));
+	REQUIRE(String::splitStrings("", ";") == std::vector<std::string>());
+	REQUIRE(String::splitStrings("a", ";") == std::vector<std::string>({"a"}));
+	REQUIRE(String::splitStrings("asdf;bdeaf", ";") == std::vector<std::string>({"asdf", "bdeaf"}));
+	REQUIRE(String::splitStrings("asdf;bdeaf;foo", ";") == std::vector<std::string>({"asdf", "bdeaf", "foo"}));
+	REQUIRE(String::splitStrings("asdf;bdeaf;;foo;", ";") == std::vector<std::string>({"asdf", "bdeaf", "", "foo", ""}));
 }
 
 TEST_CASE("can replace all in strings", "[StringUtil]") {
-	REQUIRE(StringUtil::replaceAll("this is an test", "an", "a") == "this is a test");
-	REQUIRE(StringUtil::replaceAll("this is a test", "asdf", "fdsa") == "this is a test");
-	REQUIRE(StringUtil::replaceAll("abc def", "ab", "ba") == "bac def");
-	REQUIRE(StringUtil::replaceAll("abc abc abc", "bc", "cb") == "acb acb acb");
-	REQUIRE(StringUtil::replaceAll("abc abc abc abc", "bc", "sdf") == "asdf asdf asdf asdf");
+	REQUIRE(String::replaceAll("this is an test", "an", "a") == "this is a test");
+	REQUIRE(String::replaceAll("this is a test", "asdf", "fdsa") == "this is a test");
+	REQUIRE(String::replaceAll("abc def", "ab", "ba") == "bac def");
+	REQUIRE(String::replaceAll("abc abc abc", "bc", "cb") == "acb acb acb");
+	REQUIRE(String::replaceAll("abc abc abc abc", "bc", "sdf") == "asdf asdf asdf asdf");
 }
 
 TEST_CASE("can convert string to all uppercase", "[StringUtil]") {
-	REQUIRE(StringUtil::toUpper("asdf") == "ASDF");
-	REQUIRE(StringUtil::toUpper("1234") == "1234");
+	REQUIRE(String::toUpper("asdf") == "ASDF");
+	REQUIRE(String::toUpper("1234") == "1234");
 }
 
 TEST_CASE("can take first line", "[StringUtil]") {
-	REQUIRE(StringUtil::firstLine("this\nis\na\ntest\n") == "this");
-	REQUIRE(StringUtil::firstLine("\nasdf\n") == "");
+	REQUIRE(String::firstLine("this\nis\na\ntest\n") == "this");
+	REQUIRE(String::firstLine("\nasdf\n") == "");
 }
 
 TEST_CASE("can check startsWith", "[StringUtil]") {
-	REQUIRE(StringUtil::startsWith("asdf", "as"));
-	REQUIRE_FALSE(StringUtil::startsWith("asdf", "sd"));
+	REQUIRE(String::startsWith("asdf", "as"));
+	REQUIRE_FALSE(String::startsWith("asdf", "sd"));
 }
 
 TEST_CASE("can check endsWith", "[StringUtil]") {
-	REQUIRE(StringUtil::endsWith("asdf", "df"));
-	REQUIRE_FALSE(StringUtil::endsWith("asdf", "sd"));
+	REQUIRE(String::endsWith("asdf", "df"));
+	REQUIRE_FALSE(String::endsWith("asdf", "sd"));
 }

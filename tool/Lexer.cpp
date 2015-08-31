@@ -3,6 +3,15 @@
 #include "util/StringUtil.h"
 #include "util/Error.h"
 
+namespace Argonauts {
+namespace Tool {
+
+static std::string cleanString(const std::string &in)
+{
+	using Util::String::replaceAll;
+	return replaceAll(replaceAll(replaceAll(in, "\\\"", "\""), "\\\n", "\n"), "\\\t", "\t");
+}
+
 Lexer::Lexer()
 {
 }
@@ -10,7 +19,7 @@ Lexer::Lexer()
 std::vector<Lexer::Token> Lexer::consume(const std::string &data, const std::string &filename)
 {
 	std::vector<Token> tokens;
-	SelfContainedIterator<std::string> it(data);
+	Util::SelfContainedIterator<std::string> it(data);
 	while (it.hasNext())
 	{
 		const char next = it.next();
@@ -24,26 +33,22 @@ std::vector<Lexer::Token> Lexer::consume(const std::string &data, const std::str
 				const CharacterClass cc = classifyCharacter(c);
 				return cc == Letter || cc == Digit || c == '_';
 			});
-			if (string == "enum")
-			{
+			if (string == "enum") {
 				tokens.push_back(Token::createSpecial(Token::Keyword_Enum, offset));
-			}
-			else if (string == "struct")
-			{
+			} else if (string == "struct") {
 				tokens.push_back(Token::createSpecial(Token::Keyword_Struct, offset));
-			}
-			else
-			{
+			} else if (string == "using") {
+				tokens.push_back(Token::createSpecial(Token::Keyword_Using, offset));
+			} else {
 				tokens.push_back(Token::createIdentifier(string, offset));
 			}
 		} else if (next == '/' && it.peekNext() == '/') {
 			consumeWhile(it, [](const char c) -> bool { return c != '\n'; });
 		} else {
 			switch (next) {
-			case '"':
-			{
+			case '"': {
 				bool isEscape = false;
-				tokens.push_back(Token::createString(consumeWhile(it, [&isEscape](const char c) -> bool
+				tokens.push_back(Token::createString(cleanString(consumeWhile(it, [&isEscape](const char c) -> bool
 				{
 					if (c == '"' && !isEscape)
 					{
@@ -58,7 +63,7 @@ std::vector<Lexer::Token> Lexer::consume(const std::string &data, const std::str
 						isEscape = false;
 					}
 					return true;
-				}), offset));
+				})), offset));
 				it.next(); // ending "
 				break;
 			}
@@ -107,7 +112,7 @@ std::vector<Lexer::Token> Lexer::consume(const std::string &data, const std::str
 			case '\t':
 				break;
 			default:
-				throw Error(std::string("Unexpected character: ") + next + " (0x" + StringUtil::charToHexString(next) + ")", offset, Error::Source(data, filename));
+				throw Util::Error(std::string("Unexpected character: ") + next + " (0x" + Util::String::charToHexString(next) + ")", offset, Util::Error::Source(data, filename));
 			}
 		}
 	}
@@ -115,7 +120,7 @@ std::vector<Lexer::Token> Lexer::consume(const std::string &data, const std::str
 	return tokens;
 }
 
-std::string Lexer::consumeWhile(SelfContainedIterator<std::string> &it, const std::function<bool (const char)> &isAcceptedCallback)
+std::string Lexer::consumeWhile(Util::SelfContainedIterator<std::string> &it, const std::function<bool (const char)> &isAcceptedCallback)
 {
 	std::string out;
 	while (it.hasNext() && isAcceptedCallback(it.peekNext()))
@@ -154,6 +159,7 @@ const std::string Lexer::Token::toString(const Type type)
 	case Integer: return "INTEGER";
 	case Keyword_Enum: return "ENUM";
 	case Keyword_Struct: return "STRUCT";
+	case Keyword_Using: return "USING";
 	case ExclamationMark: return "EXCLAMATION_MARK";
 	case AtSymbol: return "AT_SYMBOL";
 	case ParanthesisOpen: return "PARANTHESIS_OPEN";
@@ -170,4 +176,7 @@ const std::string Lexer::Token::toString(const Type type)
 	case EndOfFile: return "EOF";
 	case Invalid: return "INVALID";
 	}
+}
+
+}
 }

@@ -9,6 +9,45 @@
 
 using namespace Argonauts::Util;
 
+/* This function will process the given `data` and produce two result strings: a header and a source file.
+ *
+ * The given input data should start of with metadata rows in the format `<key>: <value>`. `<key>` can be `arguments`
+ * or `includes`. In the case of `arguments`, the `<value>` is copied verbatim as the argument list for the generated
+ * function. `includes` are split up at ',' and then each is added as an #include line in the final header.
+ *
+ * After those rows an empty row must follow, after which the actual template contents are. These can be anything, but
+ * the following are handled specially:
+ * * <%= expression %>
+ *     * expression has to result in a std::string, char*, const char*, or any type that std::to_string can take. The
+ *       output will be appended to the runtime output at runtime.
+ * * <% statement %>
+ *     * Anything put here will be copied directly to the output when the template is processed.
+ * * Everything else is copied unchanged.
+ *
+ * Example:
+ * ```
+ * arguments: const std::string &title, std::vector<std::string> &guides
+ * includes: <string>, <vector>
+ *
+ * Welcome to <%= title %>!
+ *
+ * Some of our guides are:
+ * <% for (const std::string &guide : guides) { %>
+ * <%= guide %>
+ * <% } %>
+ * ```
+ * will, when run with the arguments "the Zoo", {"Arthur", "Zaphod", "Trillian"} generate:
+ * ```
+ * Welcome to the Zoo!
+ *
+ * Some of our guides are:
+ * Arthur
+ * Zaphod
+ * Trillian
+ * ```
+ *
+ * It is important to note that quite a bit of whitespace (including newlines) will be left in the final output.
+ */
 std::pair<std::string, std::string> processEct(const std::string &filename, const std::string &data)
 {
 	std::string argumentsRow, includesRow;
@@ -30,7 +69,7 @@ std::pair<std::string, std::string> processEct(const std::string &filename, cons
 	std::string header, source;
 	header += std::string("#pragma once\n")
 			+ "#include <string>\n";
-	for (const std::string &include : StringUtil::splitStrings(includesRow, ", ")) {
+	for (const std::string &include : String::splitStrings(includesRow, ", ")) {
 		header += "#include " + include + "\n";
 	}
 	header += "std::string generate" + boost::filesystem::path(filename).stem().string() + "(" + argumentsRow + ");\n";
@@ -38,6 +77,7 @@ std::pair<std::string, std::string> processEct(const std::string &filename, cons
 			+ "\n"
 			+ "static inline std::string toString(const std::string &string) { return string; }\n"
 			+ "static inline std::string toString(const char *string) { return string; }\n"
+			+ "static inline std::string toString(char *string) { return string; }\n"
 			+ "template <typename T> static inline std::string toString(const T val) { return std::to_string(val); }\n"
 			+ "\n"
 			+ "std::string generate" + boost::filesystem::path(filename).stem().string() + "(" + argumentsRow + ")\n"
@@ -45,7 +85,7 @@ std::pair<std::string, std::string> processEct(const std::string &filename, cons
 			+ "\tstd::string out;\n";
 	while (true) {
 		const std::size_t next = data.find('<', index);
-		source += "\tout += toString(\"" + StringUtil::replaceAll(StringUtil::replaceAll(StringUtil::replaceAll(data.substr(index, next - index), "\n", "\\n"), "\t", "\\t"), "\"", "\\\"") + "\");\n";
+		source += "\tout += toString(\"" + String::replaceAll(String::replaceAll(String::replaceAll(data.substr(index, next - index), "\n", "\\n"), "\t", "\\t"), "\"", "\\\"") + "\");\n";
 		if (next == std::string::npos) {
 			break;
 		}
@@ -80,22 +120,22 @@ int main(int argc, const char **argv)
 		const boost::filesystem::path outdir = boost::filesystem::path(parser.option<std::string>("output"));
 		if (!boost::filesystem::exists(outdir)) {
 			if (!boost::filesystem::create_directories(outdir)) {
-				throw ArgonautsException("Unable to create output directory");
+				throw Exception("Unable to create output directory");
 			}
 		} else if (!boost::filesystem::is_directory(outdir)) {
-			throw ArgonautsException("Output directory already exists but is not a directory");
+			throw Exception("Output directory already exists but is not a directory");
 		}
 		for (const std::string &infile : parser.positionalArguments("INPUT")) {
 			if (!boost::filesystem::exists(infile)) {
-				throw ArgonautsException(std::string("No such input file: ") + infile);
+				throw Exception(std::string("No such input file: ") + infile);
 			} else if (!boost::filesystem::is_regular_file(infile)) {
-				throw ArgonautsException(std::string("Given file is not a regular file: ") + infile);
+				throw Exception(std::string("Given file is not a regular file: ") + infile);
 			}
 			const boost::filesystem::path filename = boost::filesystem::path(infile).filename();
-			const std::string contents = FSUtil::readFile(infile);
+			const std::string contents = FS::readFile(infile);
 			const std::pair<std::string, std::string> outdata = processEct(infile, contents);
-			FSUtil::writeFile((outdir / filename).string() + ".h", outdata.first);
-			FSUtil::writeFile((outdir / filename).string() + ".cpp", outdata.second);
+			FS::writeFile((outdir / filename).string() + ".h", outdata.first);
+			FS::writeFile((outdir / filename).string() + ".cpp", outdata.second);
 		}
 		return CLI::Execution::ExitSuccess;
 	});
@@ -106,10 +146,10 @@ int main(int argc, const char **argv)
 	try {
 		return builder->build().parse(argc, argv);
 	} catch (Error &e) {
-		std::cerr << TermUtil::fg(TermUtil::Red, e.errorMessage()) << std::endl;
+		std::cerr << Term::fg(Term::Red, e.errorMessage()) << std::endl;
 		return -1;
-	} catch (ArgonautsException &e) {
-		std::cerr << TermUtil::fg(TermUtil::Red, e.what()) << std::endl;
+	} catch (Exception &e) {
+		std::cerr << Term::fg(Term::Red, e.what()) << std::endl;
 		return -1;
 	}
 }

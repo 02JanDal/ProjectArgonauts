@@ -7,6 +7,8 @@ includes: "util/StringUtil.h", "tool/DataTypes.h", "tool/compilers/cpp/TypeProvi
 #include "util/SaxSink.h"
 #include <Argonauts.h>
 
+<% using namespace Argonauts::Util; %>
+
 namespace Argonauts {
 namespace Runtime {
 <% for (const Argonauts::Tool::Type::Ptr &type : structure.allTypes()) { %>
@@ -307,7 +309,7 @@ public:
 		<% for (const Argonauts::Tool::Attribute &attribute : structure.members) { %>
 			else if (key == "<%= attribute.name %>") { m_currentKey = key; return true; }
 		<% } %>
-		else return reportError("Unexpected key '%s', expected one of'<%= StringUtil::joinStrings(acceptedObjectKeys, "', '") %>", key.c_str());
+		else return reportError("Unexpected key '%s', expected one of'<%= String::joinStrings(acceptedObjectKeys, "', '") %>", key.c_str());
 	}
 	bool endObjectImpl(const std::size_t) override { return true; }
 

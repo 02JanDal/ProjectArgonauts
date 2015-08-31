@@ -16,6 +16,8 @@ add_executable(argonauts
 	Lexer.cpp
 	Parser.h
 	Parser.cpp
+	Resolver.h
+	Resolver.cpp
 	DataTypes.h
 	DataTypes.cpp
 	Compiler.h
@@ -39,7 +41,8 @@ add_executable(argonauts
 	compilers/cpp/TypeProviders.h
 	compilers/cpp/TypeProviders.cpp
 )
-target_link_libraries(argonauts PRIVATE argonauts_util)
+target_link_libraries(argonauts PRIVATE argonauts_util ${Boost_LIBRARIES})
+target_include_directories(argonauts PRIVATE ${Boost_INCLUDE_DIRS})
 
 install(TARGETS argonauts
 	EXPORT Argonauts

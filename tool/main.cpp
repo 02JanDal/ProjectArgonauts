@@ -6,7 +6,6 @@
 #include <iostream>
 
 #include "util/Util.h"
-#include "util/StringUtil.h"
 #include "util/CmdParser.h"
 #include "util/TermUtil.h"
 #include "util/Error.h"
@@ -37,10 +36,10 @@ int main(int argc, const char **argv)
 	try {
 		return builder->build().parse(argc, argv);
 	} catch (Error &e) {
-		std::cerr << TermUtil::fg(TermUtil::Red, e.errorMessage()) << std::endl;
+		std::cerr << Term::fg(Term::Red, e.errorMessage()) << std::endl;
 		return -1;
-	} catch (ArgonautsException &e) {
-		std::cerr << TermUtil::fg(TermUtil::Red, e.what()) << std::endl;
+	} catch (Exception &e) {
+		std::cerr << Term::fg(Term::Red, e.what()) << std::endl;
 		return -1;
 	}
 }

@@ -267,7 +267,12 @@ void SaxReader::end()
 			case Array:
 				reportError("Unexpected EOF, expected ']' or ','");
 				break;
-			default:
+			case String:
+			case Key:
+			case Number:
+			case Special:
+			case WantValue:
+			case Invalid:
 				reportError("Unexpected EOF");
 			}
 			break;
@@ -283,7 +288,10 @@ void SaxReader::end()
 		case Special:
 			reportError("Unexpected EOF, expected CHARACTER");
 			break;
-		default:
+		case WantValue:
+			reportError("Unexpected EOF, expected '{', '[', '\"', NUMBER, 'true', 'false' or null'");
+			break;
+		case Invalid:
 			reportError("Unexpected EOF");
 		}
 	}
@@ -295,16 +303,22 @@ void SaxReader::reportError(const std::string &error)
 }
 }
 
-std::istream &operator>>(std::istream &stream, SaxSink *handler)
+}
+}
+
+std::istream &operator>>(std::istream &stream, Argonauts::Util::SaxSink *handler)
 {
 	static const std::size_t chunkSize = 512;
 	char buffer[chunkSize];
 
-	Json::SaxReader reader(handler);
+	Argonauts::Util::Json::SaxReader reader(handler);
 
 	while (!stream.good() && !reader.isError()) {
-		const std::size_t size = stream.readsome(buffer, chunkSize);
-		reader.addData(buffer, size);
+		const auto size = stream.readsome(buffer, chunkSize);
+		if (size == -1) {
+			throw Argonauts::Util::Error("Unable to read from input stream", std::size_t(reader.errorOffset()));
+		}
+		reader.addData(buffer, std::size_t(size));
 	}
 
 	reader.end();
@@ -314,6 +328,4 @@ std::istream &operator>>(std::istream &stream, SaxSink *handler)
 	}
 
 	return stream;
-}
-}
 }

@@ -20,7 +20,7 @@ std::string TypeProvider::fullType(const std::shared_ptr<Type> &t) const
 	if (t->isTemplated()) {
 		std::vector<std::string> args;
 		std::transform(t->templateArguments.begin(), t->templateArguments.end(), std::back_inserter(args), [this](const Type::Ptr &ptr) { return fullType(ptr); });
-		return type(t->name) + '<' + StringUtil::joinStrings(args, ", ") + '>';
+		return type(t->name) + '<' + Util::String::joinStrings(args, ", ") + '>';
 	} else {
 		return type(t->name);
 	}

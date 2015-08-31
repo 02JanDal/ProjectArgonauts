@@ -4,7 +4,7 @@
 
 static inline std::string replaceEscaped(const std::string &in)
 {
-	using StringUtil::replaceAll;
+	using Argonauts::Util::String::replaceAll;
 	std::string out = in;
 	out = replaceAll(out, "\\", "\\\\");
 	out = replaceAll(out, "/", "\\/");

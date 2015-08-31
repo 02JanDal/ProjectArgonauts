@@ -24,9 +24,6 @@ public:
 
 private:
 	std::vector<AbstractCompiler *> m_compilers;
-	/*void resolveCompiler();
-	std::vector<std::string> candidates() const;
-	void write(const Argonauts::File &file, std::ostream &str);*/
 };
 }
 }

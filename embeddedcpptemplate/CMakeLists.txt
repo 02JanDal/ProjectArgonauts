@@ -1,7 +1,8 @@
 add_executable(embeddedcpptemplate
 	main.cpp
 )
-target_link_libraries(embeddedcpptemplate PRIVATE argonauts_util)
+target_link_libraries(embeddedcpptemplate PRIVATE argonauts_util ${Boost_LIBRARIES})
+target_include_directories(embeddedcpptemplate PRIVATE ${Boost_INCLUDE_DIRS})
 
 function(compile_ect SOURCES_OUT DIR)
 	set(result )

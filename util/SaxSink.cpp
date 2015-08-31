@@ -4,6 +4,7 @@
 
 namespace Argonauts {
 namespace Util {
+
 bool DelegatingSaxSink::null()
 {
 	if (m_delegatingTo) {
@@ -123,5 +124,6 @@ void DelegatingSaxSink::delegateToObject(SaxSink *handler)
 	m_delegatingTo->startObject();
 	m_nestingLevelCounter = 1;
 }
+
 }
 }

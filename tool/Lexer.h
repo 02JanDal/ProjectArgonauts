@@ -4,8 +4,10 @@
 #include <vector>
 #include <functional>
 
-#include "util/ArgonautsException.h"
 #include "util/SelfContainerIterator.h"
+
+namespace Argonauts {
+namespace Tool {
 
 class Lexer
 {
@@ -24,6 +26,7 @@ public:
 
 			Keyword_Enum,
 			Keyword_Struct,
+			Keyword_Using,
 
 			ExclamationMark,
 			AtSymbol,
@@ -63,7 +66,7 @@ public:
 	std::vector<Token> consume(const std::string &data, const std::string &filename);
 
 private:
-	std::string consumeWhile(SelfContainedIterator<std::string> &it, const std::function<bool(const char)> &isAcceptedCallback);
+	std::string consumeWhile(Util::SelfContainedIterator<std::string> &it, const std::function<bool(const char)> &isAcceptedCallback);
 
 	enum CharacterClass
 	{
@@ -74,3 +77,6 @@ private:
 	};
 	static CharacterClass classifyCharacter(const char c);
 };
+
+}
+}

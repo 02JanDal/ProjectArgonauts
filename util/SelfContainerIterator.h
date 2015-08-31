@@ -2,6 +2,9 @@
 
 #include <iterator>
 
+namespace Argonauts {
+namespace Util {
+
 // mostly taken from Q_DECLARE_SEQUENTIAL_ITERATOR
 template <typename T>
 class SelfContainedIterator
@@ -27,3 +30,6 @@ public:
 	inline bool findPrevious(const T &t) { while (it != std::begin(container)) if (*(--it) == t) return true; return false; }
 	inline int index() const { const_iterator p = it; return (--p) - std::begin(container); }
 };
+
+}
+}

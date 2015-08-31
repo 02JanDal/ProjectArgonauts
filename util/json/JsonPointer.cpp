@@ -14,19 +14,20 @@ Pointer::Pointer(const std::string &pointer)
 	bool isURI = false;
 	std::size_t nextPos = pointer.find('#');
 	if (nextPos == std::string::npos) {
-		nextPos = -1; // no fragment, start from the beginning
+		nextPos = 0; // no fragment, start from the beginning
 	} else {
 		isURI = true;
 	}
 	// parse pointer into tokens according to http://tools.ietf.org/html/draft-ietf-appsawg-json-pointer-04#section-3
-	while ((nextPos = pointer.find('/', nextPos + 1)) != std::string::npos) {
-		const std::size_t next = pointer.find('/', nextPos + 1);
-		m_referenceTokens.push_back(pointer.substr(nextPos + 1, next == std::string::npos ? (-1) : (next - 1 - nextPos)));
+	while ((nextPos = pointer.find('/', nextPos)) != std::string::npos) {
+		nextPos += 1;
+		const std::size_t next = pointer.find('/', nextPos);
+		m_referenceTokens.push_back(pointer.substr(nextPos, next == std::string::npos ? (-1) : (next - 1 - nextPos - 1)));
 	}
 	// replace ~0 -> ~ and ~1 -> /
 	std::transform(m_referenceTokens.begin(), m_referenceTokens.end(), m_referenceTokens.begin(), [](const std::string &str)
 	{
-		return StringUtil::replaceAll(StringUtil::replaceAll(str, "~0", "~"), "~1", "/");
+		return String::replaceAll(String::replaceAll(str, "~0", "~"), "~1", "/");
 	});
 	if (isURI) {
 		std::transform(m_referenceTokens.begin(), m_referenceTokens.end(), m_referenceTokens.begin(), [](std::string &str)
