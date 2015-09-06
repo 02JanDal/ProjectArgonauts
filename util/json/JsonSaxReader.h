@@ -89,11 +89,6 @@ private: // internal state
 
 	void reportError(const std::string &error);
 };
-
-class ParseException : public Error
-{
-	using Error::Error;
-};
 }
 }
 }

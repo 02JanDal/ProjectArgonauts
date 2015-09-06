@@ -22,7 +22,9 @@ find_package(Boost 1.58 REQUIRED COMPONENTS filesystem system)
 set(CMAKE_CXX_FLAGS "-std=c++14 -Wextra -Wall -Weverything -Wno-c++98-compat -Wno-c++98-compat-local-type-template-args -Wno-c++98-compat-pedantic -Wno-padded -Wno-weak-vtables")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-include_directories(${CMAKE_SOURCE_DIR} /usr/include/c++/5.2.0/)
+include_directories(${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
+
+configure_file(${CMAKE_SOURCE_DIR}/tool_config.h.in ${CMAKE_BINARY_DIR}/tool_config.h)
 
 add_subdirectory(embeddedcpptemplate)
 add_subdirectory(util)

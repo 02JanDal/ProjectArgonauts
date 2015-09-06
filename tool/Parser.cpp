@@ -20,15 +20,27 @@
 #include <iostream>
 
 #include "util/Util.h"
+#include "util/Error.h"
 #include "util/StringUtil.h"
+#include "common/GeneralParser.h"
 #include "DataTypes.h"
 
 namespace Argonauts {
-using namespace Util;
 namespace Tool {
+using namespace Util;
+using namespace Common;
 
-Parser::Parser(const std::vector<Lexer::Token> &tokens)
-	: it(tokens)
+inline PositionedString positionedStringFromToken(const Token &token)
+{
+	return PositionedString{token.string(), token.offset, token.length};
+}
+inline PositionedInt64 positionedIntFromToken(const Token &token)
+{
+	return PositionedInt64{token.integer(), token.offset, token.length};
+}
+
+Parser::Parser(const std::vector<Token> &tokens)
+	: m_tokens(tokens)
 {
 }
 
@@ -36,229 +48,180 @@ File Parser::process()
 {
 	File file;
 	Annotations annotations;
-	while (it.hasNext())
+	std::string lastDefinedAnnotation;
+
+	auto defineStruct = [&file, &annotations](const Token &token, const std::vector<Token> &stack)
 	{
-		const Token next = consumeToken({Token::AtSymbol, Token::Keyword_Enum, Token::Keyword_Struct, Token::Keyword_Using, Token::EndOfFile});
-		switch (next.type)
-		{
-		case Token::AtSymbol:
-		{
-			const auto annos = consumeAnnotation();
-			annotations.values.insert(annos.begin(), annos.end());
-			break;
+		file.structs.push_back(Struct{PositionedString(), positionedStringFromToken(stack.at(stack.size() - 1)), {}, annotations});
+		annotations.values.clear();
+		return GeneralParser::defineStruct(token, stack);
+	};
+	auto defineStructWithInclude = [&file, &annotations](const Token &token, const std::vector<Token> &stack)
+	{
+		file.structs.push_back(Struct{positionedStringFromToken(stack.at(stack.size() - 1)), positionedStringFromToken(stack.at(stack.size() - 3)), {}, annotations});
+		annotations.values.clear();
+		return GeneralParser::defineStructWithInclude(token, stack);
+	};
+	auto defineEnum = [&file, &annotations](const Token &token, const std::vector<Token> &stack)
+	{
+		file.enums.push_back(Enum{positionedStringFromToken(stack.at(stack.size() - 4)), positionedStringFromToken(stack.at(stack.size() - 2)), {}, annotations});
+		annotations.values.clear();
+		return GeneralParser::defineEnum(token, stack);
+	};
+	auto defineUsing = [&file, &annotations](const Token &token, const std::vector<Token> &stack)
+	{
+		file.usings.push_back(Using{positionedStringFromToken(stack.at(stack.size() - 3)), stack.at(stack.size() - 1).getRawData<Type>(), annotations});
+		annotations.values.clear();
+		return GeneralParser::defineUsing(token, stack);
+	};
+	auto defineAnnotation = [&annotations, &lastDefinedAnnotation](const Token &token, const std::vector<Token> &stack)
+	{
+		annotations.values.insert({positionedStringFromToken(token), Annotations::Value(PositionedString())});
+		lastDefinedAnnotation = token.string();
+		return GeneralParser::defineAnnotation(token, stack);
+	};
+	auto addToAnnotation = [&file, &annotations, &lastDefinedAnnotation](const Token &token, const std::vector<Token> &stack)
+	{
+		PositionedString name;
+		Annotations::Value value = PositionedString();
+		if (stack.at(stack.size() - 2).type == Token::Equal) {
+			name = positionedStringFromToken(stack.at(stack.size() - 3));
+			const Token valueToken = stack.back();
+			if (valueToken.type == Token::Integer) {
+				value = positionedIntFromToken(valueToken);
+			} else {
+				value = positionedStringFromToken(valueToken);
+			}
+		} else {
+			name = positionedStringFromToken(stack.back());
 		}
-		case Token::Keyword_Enum:
-			file.enums.push_back(consumeEnum(annotations));
-			annotations.values.clear();
-			break;
-		case Token::Keyword_Struct:
-			file.structs.push_back(consumeStruct(annotations));
-			annotations.values.clear();
-			break;
-		case Token::Keyword_Using: {
-			const Token name = consumeToken(Token::Identifier);
-			consumeToken(Token::Equal);
-			file.usings.push_back(Using{name.string, consumeType(), annotations});
-			consumeToken(Token::SemiColon);
-			annotations.values.clear();
-			break;
+
+		annotations.values.erase(lastDefinedAnnotation);
+		annotations.values.insert({PositionedString(lastDefinedAnnotation + '.' + name.value, name.offset, name.length), value});
+		return GeneralParser::addToAnnotation(token, stack);
+	};
+	auto defineEnumEntry = [&file, &annotations](const Token &token, const std::vector<Token> &stack)
+	{
+		const PositionedString name = positionedStringFromToken(stack.at(stack.size() - 3));
+		const PositionedInt64 index = positionedIntFromToken(stack.at(stack.size() - 1));
+		file.enums.back().entries.push_back(EnumEntry{name, index, annotations});
+		annotations.values.clear();
+		return GeneralParser::defineEnumEntry(token, stack);
+	};
+	auto defineStructAttribute = [&file, &annotations](const Token &token, const std::vector<Token> &stack)
+	{
+		const PositionedString name = positionedStringFromToken(stack.at(stack.size() - 2));
+		Type::Ptr type = stack.at(stack.size() - 1).getRawData<Type>();
+		file.structs.back().members.push_back(Attribute{type, PositionedInt64(), name, annotations});
+		annotations.values.clear();
+		return GeneralParser::defineStructAttribute(token, stack);
+	};
+	auto defineStructAttributeWithIndex = [&file, &annotations](const Token &token, const std::vector<Token> &stack)
+	{
+		const PositionedString name = positionedStringFromToken(stack.at(stack.size() - 4));
+		const Type::Ptr type = stack.at(stack.size() - 3).getRawData<Type>();
+		const PositionedInt64 index = positionedIntFromToken(stack.at(stack.size() - 1));
+		file.structs.back().members.push_back(Attribute{type, index, name, annotations});
+		annotations.values.clear();
+		return GeneralParser::defineStructAttributeWithIndex(token, stack);
+	};
+	auto convertTypeToTypeList = [](const Token &token, const std::vector<Token> &stack)
+	{
+		const Token typeToken = stack.back();
+		Type::Ptr type = typeToken.getRawData<Type>();
+		Token newTkn;
+		newTkn.type = Token::TypeList;
+		newTkn.data = stack.at(stack.size() - 3).data;
+		newTkn.getRawData<Type>()->templateArguments.push_back(type);
+		return std::make_pair(1, std::vector<Token>({newTkn}));
+	};
+	auto mergeTypeListAndType = [](const Token &token, const std::vector<Token> &stack)
+	{
+		Token typelistToken = stack.at(stack.size() - 4);
+		Type::Ptr typelistContainer = typelistToken.getRawData<Type>();
+		Type::Ptr type = stack.at(stack.size() - 1).getRawData<Type>();
+		typelistContainer->templateArguments.push_back(type);
+		return std::make_pair(1, std::vector<Token>());
+	};
+	auto finalizeType = [](const Token &token, const std::vector<Token> &stack)
+	{
+		if (stack.back().type == Token::TypeList) {
+			return std::make_pair(2, std::vector<Token>());
+		} else if (stack.at(stack.size() - 2).type == Token::TypeList) {
+			Type::Ptr type = stack.at(stack.size() - 1).getRawData<Type>();
+			stack.at(stack.size() - 4).getRawData<Type>()->templateArguments.push_back(type);
+			return std::make_pair(3, std::vector<Token>());
+		} else {
+			Type::Ptr type = stack.at(stack.size() - 1).getRawData<Type>();
+			stack.at(stack.size() - 3).getRawData<Type>()->templateArguments.push_back(type);
+			return std::make_pair(2, std::vector<Token>());
 		}
-		case Token::EndOfFile:
-			return file;
-		default:
-			ASSERT(false); // should NEVER happen
+	};
+	auto typeDefinition = [&file](const std::vector<Token> &stack)
+	{
+		const Token id = stack.back();
+		if (Type::create(id.string())->isBuiltin()) {
+			throw ParserException(std::string("Redefinition of built-in type '") + id.string() + "'", id.offset, id.length);
 		}
-	}
+		for (const std::string &s : file.definedTypes()) {
+			if (s == id.string()) {
+				throw ParserException(std::string("Redefinition of user-defined type '") + id.string() + "'", id.offset, id.length);
+			}
+		}
+	};
+	auto typeUsage = [&file](const std::vector<Token> &stack)
+	{
+		const Token id = stack.back();
+		if (Type::create(id.string())->isBuiltin()) {
+			return;
+		}
+		for (const std::string &s : file.definedTypes()) {
+			if (s == id.string()) {
+				return;
+			}
+		}
+		throw ParserException(std::string("Unknown type: ") + id.string(), id.offset, id.length);
+	};
+	auto morphIdentifierToType = [](const Token &token)
+	{
+		Token tkn;
+		tkn.type = Token::Type;
+		tkn.offset = token.offset;
+		tkn.length = token.length;
+		tkn.setRawData(new Type(positionedStringFromToken(token), {}));
+		return tkn;
+	};
+	auto morphTypeToTypeList = [](const Token &token)
+	{
+		Token tkn = token;
+		tkn.type = Token::TypeList;
+		return tkn;
+	};
+	auto unexpected = [](const Token &token)
+	{
+		switch (token.type) {
+		case Token::Identifier: throw ParserException(std::string("Unexpected token IDENTIFIER (") + token.string() + ")", token.offset, token.length);
+		case Token::String: throw ParserException(std::string("Unexpected token STRING (\"") + token.string() + "\")", token.offset, token.length);
+		case Token::Integer: throw ParserException(std::string("Unexpected token INTEGER (") + std::to_string(token.integer()) + ")", token.offset, token.length);
+		default: throw ParserException(std::string("Unexpected token ") + Token::toString(token.type), token.offset, token.length);
+		}
+	};
+
+	GeneralParser::parse({defineStruct, defineStructWithInclude, defineEnum, defineUsing, defineAnnotation, addToAnnotation,
+						  defineEnumEntry, defineStructAttribute, defineStructAttributeWithIndex, convertTypeToTypeList, mergeTypeListAndType, finalizeType},
+						 {typeDefinition, typeUsage},
+						 {morphIdentifierToType, morphTypeToTypeList},
+						 std::vector<Token>(),
+						 m_tokens,
+						 unexpected);
+
 	return file;
 }
 
-Struct Parser::consumeStruct(const Annotations &annotations)
-{
-	const Token identifier = consumeToken(Token::Identifier);
-	const Token next = consumeToken({Token::CurlyBracketOpen, Token::Colon});
-	Token includes;
-	if (next.type == Token::Colon) {
-		includes = consumeToken(Token::Identifier);
-		consumeToken(Token::CurlyBracketOpen);
-	}
-
-	std::vector<Attribute> attributes;
-	while (it.hasNext() && it.peekNext().type != Token::CurlyBracketClose)
-	{
-		Annotations attributeAnnotations;
-		while (it.hasNext() && it.peekNext().type == Token::AtSymbol)
-		{
-			consumeToken(Token::AtSymbol);
-			const auto annos = consumeAnnotation();
-			attributeAnnotations.values.insert(annos.begin(), annos.end());
-		}
-
-		const PositionedString attributeName = consumeAttributeName();
-		Type::Ptr attributeType = consumeType();
-
-		Token index;
-		if (it.peekNext().type == Token::Equal)
-		{
-			consumeToken(Token::Equal);
-			index = consumeToken(Token::Integer);
-		}
-
-		consumeToken(Token::SemiColon);
-		attributes.emplace_back(attributeType, PositionedInt64(index.integer, index.offset), attributeName, attributeAnnotations);
-	}
-
-	consumeToken(Token::CurlyBracketClose);
-	return Struct{PositionedString(includes.string, includes.offset), PositionedString(identifier.string, identifier.offset),
-				std::move(attributes), annotations};
-}
-
-Enum Parser::consumeEnum(const Annotations &annotations)
-{
-	const Token identifier = consumeToken(Token::Identifier);
-	consumeToken(Token::AngleBracketOpen);
-	const Token type = consumeToken(Token::Identifier);
-	consumeToken(Token::AngleBracketClose);
-	consumeToken(Token::CurlyBracketOpen);
-
-	std::vector<EnumEntry> entries;
-	while (it.hasNext() && it.peekNext().type != Token::CurlyBracketClose)
-	{
-		Annotations entryAnnotations;
-		while (it.hasNext() && it.peekNext().type == Token::AtSymbol)
-		{
-			consumeToken(Token::AtSymbol);
-			const auto annos = consumeAnnotation();
-			entryAnnotations.values.insert(annos.begin(), annos.end());
-		}
-
-		const Token entryIdentifier = consumeToken(Token::Identifier);
-		consumeToken(Token::Equal);
-		const Token index = consumeToken(Token::Integer);
-		consumeToken(Token::SemiColon);
-		entries.emplace_back(PositionedString(entryIdentifier.string, entryIdentifier.offset), PositionedInt64(index.integer, index.offset), entryAnnotations);
-	}
-
-	consumeToken(Token::CurlyBracketClose);
-	return Enum{PositionedString(identifier.string, identifier.offset), PositionedString(type.string, type.offset), entries, annotations};
-}
-
-std::unordered_multimap<PositionedString, Annotations::Value> Parser::consumeAnnotation()
-{
-	const Token initialToken = consumeToken(Token::Identifier);
-	std::vector<std::string> name = {initialToken.string};
-	while (it.peekNext().type == Token::Dot) {
-		consumeToken(Token::Dot);
-		name.push_back(consumeToken(Token::Identifier).string);
-	}
-	std::unordered_multimap<PositionedString, Annotations::Value> values;
-	if (it.peekNext().type == Token::ParanthesisOpen) {
-		consumeToken(Token::ParanthesisOpen);
-		std::vector<std::string> currentName = name;
-		while (true) {
-			const Token first = consumeToken({Token::Identifier, Token::String, Token::Integer, Token::ParanthesisClose, Token::Comma});
-			if (first.type == Token::ParanthesisClose) {
-				break;
-			}
-
-			switch (first.type)
-			{
-			case Token::Identifier:
-			{
-				currentName.push_back(first.string);
-				while (it.peekNext().type == Token::Dot) {
-					consumeToken(Token::Dot);
-					currentName.push_back(consumeToken(Token::Identifier).string);
-				}
-				consumeToken(Token::Equal);
-				const Token second = consumeToken({Token::Identifier, Token::String, Token::Integer});
-				switch (second.type)
-				{
-				case Token::Identifier:
-				case Token::String:
-					values.emplace(PositionedString(String::joinStrings(currentName, "."), first.offset), Annotations::Value(second.string));
-					currentName = name;
-					break;
-				case Token::Integer:
-					values.emplace(PositionedString(String::joinStrings(currentName, "."), first.offset), Annotations::Value(second.integer));
-					currentName = name;
-					break;
-				default:
-					ASSERT(false); // should NEVER happen
-				}
-				break;
-			}
-			case Token::String:
-				values.emplace(PositionedString(String::joinStrings(name, "."), initialToken.offset), Annotations::Value(first.string));
-				break;
-			case Token::Integer:
-				values.emplace(PositionedString(String::joinStrings(name, "."), initialToken.offset), Annotations::Value(first.integer));
-				break;
-			default:
-				ASSERT(false); // should NEVER happen
-			}
-
-			const Token next = consumeToken({Token::ParanthesisClose, Token::Comma});
-			if (next.type == Token::ParanthesisClose) {
-				break;
-			}
-		}
-	} else {
-		values.emplace(PositionedString(String::joinStrings(name, "."), initialToken.offset), Annotations::Value(std::string()));
-	}
-	return values;
-}
-
-Type::Ptr Parser::consumeType()
-{
-	const Token id = consumeToken(Token::Identifier);
-	std::vector<Type::Ptr> args;
-	if (it.peekNext().type == Token::AngleBracketOpen) {
-		consumeToken(Token::AngleBracketOpen);
-		while (true) {
-			args.push_back(consumeType());
-			const Token next = consumeToken({Token::AngleBracketClose, Token::Comma});
-			if (next.type == Token::AngleBracketClose) {
-				break;
-			}
-		}
-	}
-	return std::make_unique<Type>(PositionedString(id.string, id.offset), std::move(args));
-}
-
-PositionedString Parser::consumeAttributeName()
-{
-	const Token start = consumeToken(Token::Identifier);
-	std::string name = start.string;
-	while (it.peekNext().type == Token::Dot) {
-		consumeToken(Token::Dot);
-		name += '.' + consumeToken(Token::Identifier).string;
-	}
-	return PositionedString(name, start.offset);
-}
-
-Lexer::Token Parser::consumeToken(const std::initializer_list<Token::Type> &types)
-{
-	if (!it.hasNext())
-	{
-		throw UnexpectedEndOfTokenStreamException();
-	}
-	const Token next = it.next();
-	if (std::find(types.begin(), types.end(), next.type) == types.end() &&
-			types.size() >= 1 && // if types is empty we allow any type of token
-			*(types.begin()) != Token::Invalid)
-	{
-		throw UnexpectedTokenException(next, types);
-	}
-	else
-	{
-		return next;
-	}
-}
-
-std::string Parser::UnexpectedTokenException::message(const Parser::Token &actual, const std::initializer_list<Parser::Token::Type> &expected)
+std::string Parser::UnexpectedTokenException::message(const Parser::Token &actual, const std::initializer_list<Parser::Token::TokenType> &expected)
 {
 	using Token = Parser::Token;
-	const std::vector<Token::Type> tokens(expected);
+	const std::vector<Token::TokenType> tokens(expected);
 
 	std::string expectedString;
 	if (tokens.size() == 1)

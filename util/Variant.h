@@ -105,7 +105,7 @@ struct Position<Type, Type, Types...>
 template <typename Needle, typename Type, typename... Types>
 struct Position<Needle, Type, Types...>
 {
-	static constexpr std::size_t index = Position<Needle, Types...>::index != -1 ? Position<Needle, Types...>::index + 1 : -1;
+	static constexpr int index = Position<Needle, Types...>::index != -1 ? Position<Needle, Types...>::index + 1 : -1;
 };
 }
 

@@ -76,7 +76,7 @@ static void resolveIncludesHelper(std::unordered_map<PositionedString, Struct> &
 	if (!structure.includes.value.empty()) {
 		auto it = structs.find(structure.includes.value);
 		if (it == structs.end()) {
-			throw Resolver::ResolverError(std::string("Unable to resolve struct include: Cannot find parent of '") + structure.name + "'", structure.includes.position);
+			throw Resolver::ResolverError(std::string("Unable to resolve struct include: Cannot find parent of '") + structure.name + "'", structure.includes.offset);
 		} else {
 			structure.members = mergeAttributes(it->second.members, structure.members);
 			structure.includes = it->second.includes;

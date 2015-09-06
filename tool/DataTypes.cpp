@@ -19,7 +19,7 @@
 #include "util/StringUtil.h"
 #include "util/Error.h"
 
-#include "Lexer.h"
+#include "common/Lexer.h"
 #include "Parser.h"
 #include "Resolver.h"
 
@@ -110,10 +110,10 @@ std::string Annotations::getString(const std::string &name, const std::string &d
 		return def;
 	}
 	const Value value = values.find(name)->second;
-	if (value.value.is<int64_t>()) {
-		return std::to_string(value.value.get<int64_t>());
+	if (value.is<PositionedInt64>()) {
+		return std::to_string(value.get<PositionedInt64>());
 	} else {
-		return value.value.get<std::string>();
+		return value.get<PositionedString>();
 	}
 }
 std::vector<std::string> Annotations::getStrings(const std::string &name) const
@@ -121,20 +121,20 @@ std::vector<std::string> Annotations::getStrings(const std::string &name) const
 	std::vector<std::string> out;
 	for (const auto &pair : values) {
 		if (pair.first == name) {
-			out.push_back(pair.second.value.get<std::string>());
+			out.push_back(pair.second.get<PositionedString>());
 		}
 	}
 	return out;
 }
 int64_t Annotations::getInt(const std::string &name) const
 {
-	return contains(name) ? values.find(name)->second.value.get<int64_t>() : -1;
+	return contains(name) ? values.find(name)->second.get<PositionedInt64>().value : -1;
 }
 
 File lexAndParse(const std::string &data, const std::string &filename, const int flags)
 {
 	try {
-		Resolver resolver(Parser(Lexer().consume(data, filename)).process());
+		Resolver resolver(Parser(Common::Lexer().consume(data, filename)).process());
 		if (flags & ResolveAliases) {
 			resolver.resolveAliases();
 		}
@@ -147,6 +147,21 @@ File lexAndParse(const std::string &data, const std::string &filename, const int
 	} catch (Resolver::ResolverError &e) {
 		throw Util::Error(e.what(), e.offset, Util::Error::Source(data, filename));
 	}
+}
+
+std::vector<std::string> File::definedTypes() const
+{
+	std::vector<std::string> out;
+	for (const Struct &s : structs) {
+		out.push_back(s.name);
+	}
+	for (const Enum &e : enums) {
+		out.push_back(e.name);
+	}
+	for (const Using &u : usings) {
+		out.push_back(u.name);
+	}
+	return out;
 }
 
 }

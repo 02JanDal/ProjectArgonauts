@@ -20,27 +20,26 @@
 
 #include "util/ArgonautsException.h"
 #include "util/SelfContainerIterator.h"
-#include "Lexer.h"
+#include "common/Lexer.h"
+#include "common/Token.h"
 #include "DataTypes.h"
 
 namespace Argonauts {
 namespace Tool {
 class Parser
 {
-	using Token = Lexer::Token;
-	using Iterator = Util::SelfContainedIterator<std::vector<Token>>;
-
-	Iterator it;
+	using Token = Common::Token;
+	std::vector<Token> m_tokens;
 public:
-	explicit Parser(const std::vector<Lexer::Token> &tokens);
+	explicit Parser(const std::vector<Token> &tokens);
 
 	class ParserException : public Util::Exception
 	{
 	public:
-		explicit ParserException(const std::string &what = std::string(), const int offset_ = 0)
-			: Util::Exception(what), offset(offset_) {}
+		explicit ParserException(const std::string &what = std::string(), const int offset_ = 0, const int length_ = 0)
+			: Util::Exception(what), offset(offset_), length(length_) {}
 
-		const int offset;
+		const int offset, length;
 	};
 	class UnexpectedEndOfTokenStreamException : public ParserException
 	{
@@ -52,11 +51,11 @@ public:
 	public:
 		using ParserException::ParserException;
 
-		explicit UnexpectedTokenException(const Token &actual, const std::initializer_list<Token::Type> &expected)
-			: ParserException(message(actual, expected), actual.offset) {}
+		explicit UnexpectedTokenException(const Token &actual, const std::initializer_list<Token::TokenType> &expected)
+			: ParserException(message(actual, expected), actual.offset, actual.length) {}
 
 	private:
-		static std::string message(const Token &actual, const std::initializer_list<Token::Type> &expected);
+		static std::string message(const Token &actual, const std::initializer_list<Token::TokenType> &expected);
 	};
 
 	File process();
@@ -66,10 +65,9 @@ private:
 	Enum consumeEnum(const Annotations &annotations);
 	std::unordered_multimap<PositionedString, Annotations::Value> consumeAnnotation();
 	Type::Ptr consumeType();
-	PositionedString consumeAttributeName();
 
-	inline Lexer::Token consumeToken(const Token::Type type) { return consumeToken({type}); }
-	Lexer::Token consumeToken(const std::initializer_list<Token::Type> &types = {Token::Invalid});
+	inline Token consumeToken(const Token::TokenType type) { return consumeToken({type}); }
+	Token consumeToken(const std::initializer_list<Token::TokenType> &types = {Token::Invalid});
 };
 }
 }

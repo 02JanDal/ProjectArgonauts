@@ -20,14 +20,18 @@ compile_ect(TEMPLATE_SRC ${CMAKE_CURRENT_BINARY_DIR}/templates
 	compilers/doc/templates/Doc.ect
 )
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tool_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/tool_config.h)
-
 add_executable(argonauts
 	${TEMPLATE_SRC}
+	${BISON_ProjArgParser_OUTPUTS}
+
+	${CMAKE_SOURCE_DIR}/common/Lexer.h
+	${CMAKE_SOURCE_DIR}/common/Lexer.cpp
+	${CMAKE_SOURCE_DIR}/common/Token.h
+	${CMAKE_SOURCE_DIR}/common/Token.cpp
+	${CMAKE_SOURCE_DIR}/common/GeneralParser.h
+	${CMAKE_SOURCE_DIR}/common/GeneralParser.cpp
 
 	main.cpp
-	Lexer.h
-	Lexer.cpp
 	Parser.h
 	Parser.cpp
 	Resolver.h

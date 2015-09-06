@@ -24,7 +24,7 @@
 #include "util/OsUtil.h"
 #include "util/TermUtil.h"
 #include "util/FSUtil.h"
-#include "Lexer.h"
+#include "common/Lexer.h"
 #include "Parser.h"
 #include "DataTypes.h"
 

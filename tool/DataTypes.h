@@ -30,10 +30,10 @@ namespace Tool {
 template <typename T>
 struct PositionedValue
 {
-	PositionedValue(const T &value_, const int position_ = -1) : value(value_), position(position_) {}
+	PositionedValue(const T &value_ = T(), const int offset_ = -1, const int length_ = -1) : value(value_), offset(offset_), length(length_) {}
 
 	T value;
-	int position;
+	int offset, length;
 
 	operator T() const { return value; }
 
@@ -69,7 +69,7 @@ namespace Tool {
 
 struct Annotations
 {
-	using Value = PositionedValue<Util::Variant<std::string, int64_t>>;
+	using Value = Util::Variant<PositionedString, PositionedInt64>;
 
 	std::unordered_multimap<PositionedString, Value> values;
 
@@ -139,8 +139,8 @@ struct Attribute
 
 	Annotations annotations;
 
-	explicit Attribute(Type::Ptr &type_, const PositionedInt64 index_, const PositionedString &name_, const Annotations &annotations_)
-		: type(std::forward<Type::Ptr>(type_)), index(index_), name(name_), annotations(annotations_) {}
+	explicit Attribute(const Type::Ptr &type_, const PositionedInt64 index_, const PositionedString &name_, const Annotations &annotations_)
+		: type(type_), index(index_), name(name_), annotations(annotations_) {}
 };
 struct Struct
 {
@@ -183,6 +183,8 @@ struct File
 	std::vector<Struct> structs;
 	std::vector<Enum> enums;
 	std::vector<Using> usings;
+
+	std::vector<std::string> definedTypes() const;
 };
 
 enum LexAndParseFlags
