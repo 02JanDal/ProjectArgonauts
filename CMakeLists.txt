@@ -30,6 +30,7 @@ add_subdirectory(embeddedcpptemplate)
 add_subdirectory(util)
 add_subdirectory(runtime)
 add_subdirectory(tool)
+add_subdirectory(editor)
 add_subdirectory(example)
 add_subdirectory(test)
 
