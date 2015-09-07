@@ -95,12 +95,12 @@ struct Position;
 template <typename Type>
 struct Position<Type>
 {
-	static constexpr std::size_t index = std::size_t(-1);
+	static constexpr int index = -1;
 };
 template <typename Type, typename... Types>
 struct Position<Type, Type, Types...>
 {
-	static constexpr std::size_t index = 0;
+	static constexpr int index = 0;
 };
 template <typename Needle, typename Type, typename... Types>
 struct Position<Needle, Type, Types...>
