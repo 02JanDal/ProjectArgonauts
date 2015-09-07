@@ -38,7 +38,7 @@ Pointer::Pointer(const std::string &pointer)
 	while ((nextPos = pointer.find('/', nextPos)) != std::string::npos) {
 		nextPos += 1;
 		const std::size_t next = pointer.find('/', nextPos);
-		m_referenceTokens.push_back(pointer.substr(nextPos, next == std::string::npos ? (-1) : (next - 1 - nextPos - 1)));
+		m_referenceTokens.push_back(pointer.substr(nextPos, next == std::string::npos ? (-1) : (next - nextPos)));
 	}
 	// replace ~0 -> ~ and ~1 -> /
 	std::transform(m_referenceTokens.begin(), m_referenceTokens.end(), m_referenceTokens.begin(), [](const std::string &str)

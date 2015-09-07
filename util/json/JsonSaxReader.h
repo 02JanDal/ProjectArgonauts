@@ -86,6 +86,7 @@ private: // internal state
 	}
 
 	std::string m_currentValue; // the data of the current string/number/special/key
+	std::string m_utfString;
 
 	void reportError(const std::string &error);
 };

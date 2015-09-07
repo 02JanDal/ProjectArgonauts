@@ -47,7 +47,7 @@ static inline bool stringContains(const char *str, const std::size_t size, const
 }
 static inline bool isEscapeCharacter(const char c)
 {
-	return c == '\\' || c == '/' || c == '"' || c == 'b' || c == 'f' || c == 'n' || c == 'r' || c == 't';
+	return c == '\\' || c == '/' || c == '"' || c == 'b' || c == 'f' || c == 'n' || c == 'r' || c == 't' || c == 'u';
 }
 static inline char escapeForCharacter(const char c)
 {
@@ -81,32 +81,36 @@ void SaxReader::addData(const char *data, const std::size_t size)
 		const char next = data[i];
 		switch (m_state.back()) {
 		case String:
-			if (!m_isEscaped && next == m_itemStart) {
-				SEND_TO_HANDLER1(string, m_currentValue);
-				resetCurrentValue();
-				m_itemStart = 0;
-				m_state.pop_back();
-			} else if (!m_isEscaped && next == '\\') {
-				m_isEscaped = true;
-			} else if (m_isEscaped && isEscapeCharacter(next)) {
-				appendToCurrentValue(escapeForCharacter(next));
-				m_isEscaped = false;
-			} else {
-				appendToCurrentValue(next);
-			}
-			break;
 		case Key:
-			// TODO unicode support (\uXXXX)
-			if (!m_isEscaped && ((m_itemStart == 0 && next == ':') || next == m_itemStart)) {
-				SEND_TO_HANDLER1(key, m_currentValue);
+			if (!m_utfString.empty()) {
+				m_utfString += next;
+				if (m_utfString.size() == 5) {
+					appendToCurrentValue(std::stoi(m_utfString, 0, 16));
+				}
+			} else if (!m_isEscaped && ((m_itemStart == 0 && next == ':') || next == m_itemStart)) {
+				if (m_state.back() == String) {
+					SEND_TO_HANDLER1(string, m_currentValue);
+				} else {
+					SEND_TO_HANDLER1(key, m_currentValue);
+				}
 				resetCurrentValue();
 				m_itemStart = 0;
-				m_state.pop_back();
-				m_state.push_back(WantValue);
+				if (m_state.back() == Key) {
+					m_state.pop_back();
+					m_state.push_back(WantValue);
+				} else {
+					m_state.pop_back();
+				}
 			} else if (!m_isEscaped && next == '\\') {
 				m_isEscaped = true;
-			} else if (m_isEscaped && isEscapeCharacter(next)) {
-				appendToCurrentValue(escapeForCharacter(next));
+			} else if (m_isEscaped) {
+				if (isEscapeCharacter(next)) {
+					appendToCurrentValue(escapeForCharacter(next));
+				} else if (next == 'u') {
+					m_utfString = "u";
+				} else {
+					appendToCurrentValue(next);
+				}
 				m_isEscaped = false;
 			} else {
 				appendToCurrentValue(next);
