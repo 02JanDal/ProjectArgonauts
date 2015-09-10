@@ -84,7 +84,7 @@ struct TypeHelper<N>
 	{
 		throw std::logic_error("Invalid variant index");
 	}
-	static inline bool doCompare(std::size_t, void *, void *)
+	static inline bool doCompare(std::size_t, const void *, const void *)
 	{
 		throw std::logic_error("Invalid variant index");
 	}
@@ -186,10 +186,10 @@ public:
 	}
 	bool operator!=(const Variant<Types...> &other) const
 	{
-		if (m_which == other.m_which) {
-			return false;
+		if (m_which != other.m_which) {
+			return true;
 		} else {
-			return TypeHelper::doCompare(m_which, &other.m_data, &m_data);
+			return !TypeHelper::doCompare(m_which, &other.m_data, &m_data);
 		}
 	}
 

@@ -48,7 +48,7 @@ File Parser::process()
 {
 	File file;
 	Annotations annotations;
-	std::string lastDefinedAnnotation;
+	PositionedString lastDefinedAnnotation;
 
 	auto defineStruct = [&file, &annotations](const Token &token, const std::vector<Token> &stack)
 	{
@@ -86,6 +86,7 @@ File Parser::process()
 		Annotations::Value value = PositionedString();
 		if (stack.at(stack.size() - 2).type == Token::Equal) {
 			name = positionedStringFromToken(stack.at(stack.size() - 3));
+			name = PositionedString(lastDefinedAnnotation.value + '.' + name.value, name.offset, name.length);
 			const Token valueToken = stack.back();
 			if (valueToken.type == Token::Integer) {
 				value = positionedIntFromToken(valueToken);
@@ -93,11 +94,16 @@ File Parser::process()
 				value = positionedStringFromToken(valueToken);
 			}
 		} else {
-			name = positionedStringFromToken(stack.back());
+			name = lastDefinedAnnotation;
+			if (stack.back().type == Token::Integer) {
+				value = positionedIntFromToken(stack.back());
+			} else {
+				value = positionedStringFromToken(stack.back());
+			}
 		}
 
 		annotations.values.erase(lastDefinedAnnotation);
-		annotations.values.insert({PositionedString(lastDefinedAnnotation + '.' + name.value, name.offset, name.length), value});
+		annotations.values.insert({name, value});
 		return GeneralParser::addToAnnotation(token, stack);
 	};
 	auto defineEnumEntry = [&file, &annotations](const Token &token, const std::vector<Token> &stack)

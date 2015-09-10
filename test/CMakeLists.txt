@@ -27,6 +27,7 @@ add_executable(tests main.cpp
 	json/tst_JsonReference.cpp
 	tst_StringUtil.cpp
 	tst_CmdParser.cpp
+	tst_Variant.cpp
 )
 target_link_libraries(tests argonauts_util)
 target_include_directories(tests PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/Catch ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/util)
