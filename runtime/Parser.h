@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <string>
+
 namespace Argonauts {
 namespace Util { class SaxSink; }
 namespace Runtime {

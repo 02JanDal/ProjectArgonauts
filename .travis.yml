@@ -1,0 +1,47 @@
+# General set up
+language: cpp
+cache: apt
+notifications:
+ email: false
+sudo: required
+
+addons:
+  apt:
+    sources:
+      - boost-latest
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-precise-3.5
+      - llvm-toolchain-precise-3.6
+
+# Build matrix set up
+compiler:
+ - gcc
+ - clang
+os:
+ - linux
+ - osx
+env:
+ - QT_VERSION=5.4.1 # latest stable
+ - QT_VERSION=5.5 # latest
+matrix:
+  exclude:
+    # only use clang on OS X
+    - os: osx
+      compiler: gcc
+    # only use the qt available from homebrew
+    - os: osx
+      env: QT_VERSION=5.4.1
+    - os: osx
+      env: QT_VERSION=5.5-beta
+
+# Install dependencies
+install:
+ - source travis-prepare.sh # installs qt, cmake and clang or gcc. need to source because some env vars are set from there
+
+# Actual work
+before_script:
+ - mkdir build
+ - cd build
+ - cmake -DCMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH ..
+script:
+ - make -j4 && make test ARGS="-V"

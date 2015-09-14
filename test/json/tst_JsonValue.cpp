@@ -32,7 +32,7 @@ TEST_CASE("basic accessors work", "[Json::Value]") {
 
 	REQUIRE(Value(std::string()).type() == Type::String);
 	REQUIRE(Value(1.0f).type() == Type::Number);
-	REQUIRE(Value(int64_t(42)).type() == Type::Number);
+	REQUIRE(Value(int64_t(42)).type() == Type::Integer);
 	REQUIRE(Value(Array()).type() == Type::Array);
 	REQUIRE(Value(Object()).type() == Type::Object);
 	REQUIRE(Value(nullptr).type() == Type::Null);

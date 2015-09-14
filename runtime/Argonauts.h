@@ -19,6 +19,12 @@
 #include <stdexcept>
 #include <vector>
 
+#ifdef __GLIBCXX__
+#pragma message("Using GLIBCXX")
+#else
+#pragma message("Using other stdlib")
+#endif
+
 #include "Parser.h"
 #include "Serializer.h"
 

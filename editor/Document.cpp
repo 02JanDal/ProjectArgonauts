@@ -261,7 +261,7 @@ QVector<Document::Diagnostic> Document::diagnosticsFor(const QTextCursor &cursor
 	QVector<Diagnostic> out;
 	if (cursor.isNull()) {
 		for (auto block = begin(); block != end(); block = block.next()) {
-			out.append(UserData::getForBlock(block)->diagnostics);
+			out += UserData::getForBlock(block)->diagnostics;
 		}
 	} else {
 		const QVector<Diagnostic> tmp = UserData::getForBlock(cursor.block())->diagnostics;

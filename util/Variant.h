@@ -112,7 +112,7 @@ struct Position<Needle, Type, Types...>
 template <typename... Types>
 class Variant
 {
-	std::aligned_union_t<4, Types...> m_data;
+	typename std::aligned_union<4, Types...>::type m_data;
 	std::size_t m_which;
 
 	template <typename T>

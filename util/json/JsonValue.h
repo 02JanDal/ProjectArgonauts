@@ -70,6 +70,7 @@ public:
 	// extras:
 	explicit Value(const int integer) : Value(int64_t(integer)) {}
 	explicit Value(char *str) : Value(std::string(str)) {}
+	explicit Value(const char *str) : Value(std::string(str)) {}
 
 	//Value(const Value &other);
 
@@ -114,6 +115,7 @@ public:
 	static SaxSink *parserSink(Value *value);
 
 	bool operator==(const Value &other) const;
+	bool operator!=(const Value &other) const;
 };
 
 using Array = ArrayContainerT<Value>;
