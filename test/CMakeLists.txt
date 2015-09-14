@@ -31,5 +31,7 @@ add_executable(tests main.cpp
 )
 target_link_libraries(tests argonauts_util)
 target_include_directories(tests PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/Catch ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/util)
-target_compile_options(tests PRIVATE "-Wno-unreachable-code -Wno-exit-time-destructors -Wno-string-conversion -Wno-shadow")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	target_compile_options(tests PRIVATE "-Wno-unreachable-code -Wno-exit-time-destructors -Wno-string-conversion -Wno-shadow")
+endif()
 add_test(NAME tests COMMAND tests)

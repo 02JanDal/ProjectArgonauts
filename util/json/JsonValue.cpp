@@ -187,22 +187,7 @@ void Value::operator=(const BooleanT &boolean)
 
 Type Value::type() const
 {
-	if (isArray()) {
-		return Type::Array;
-	} else if (isObject()) {
-		return Type::Object;
-	} else if (isBoolean()) {
-		return Type::Boolean;
-	} else if (isInteger() || isDouble()) {
-		return Type::Number;
-	} else if (isNull()) {
-		return Type::Null;
-	} else if (isString()) {
-		return Type::String;
-	} else {
-		ASSERT(false);
-		return Type::Null;
-	}
+	return m_type;
 }
 
 std::size_t Value::size() const
@@ -249,6 +234,11 @@ bool Value::operator==(const Value &other) const
 	} else {
 		return false;
 	}
+}
+
+bool Value::operator!=(const Value &other) const
+{
+	return !operator==(other);
 }
 }
 }
