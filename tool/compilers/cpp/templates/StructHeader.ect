@@ -32,14 +32,8 @@ includes: <vector>, <string>, <unordered_set>, "DataTypes.h", "util/StringUtil.h
 <% } %>
 #include <Argonauts.h>
 
-namespace Argonauts {
-namespace Runtime { class Serializer; }
-namespace Util { class SaxSink; }
-}
-
 class <%= structure.name %>
 {
-	friend class <%= structure.name %>SaxSink;
 public:
 	explicit <%= structure.name %>() {}
 
@@ -75,8 +69,6 @@ public:
 	<% } %>
 	};
 
-	void serialize(Argonauts::Runtime::Serializer *serializer) const;
-
 	inline Builder rebuild() const { return Builder(*this); }
 
 <% for (const Argonauts::Tool::Attribute &attribute : structure.members) { %>
@@ -91,9 +83,3 @@ private:
 		<%= types->fullType(attribute) %> m_<%= attribute.name %>;
 	<% } %>
 };
-
-namespace Argonauts {
-namespace Runtime {
-template <> HandleParseAction handleParseObject<<%= structure.name %>>(<%= structure.name %> &val);
-}
-}

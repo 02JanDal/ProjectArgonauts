@@ -61,39 +61,13 @@ static std::vector<std::string> listTypesRecursive(const Type::Ptr &ptr)
 	return types;
 }
 
-static std::string structSerializationFor(const Type::Ptr &type, const std::string &name, const TypeProvider *types)
-{
-	if (type->name == "List") {
-		return std::string("serializer->emitArrayStart();\n")
-				+ "for (const auto &" + name + "_ : " + name + ") {\n"
-				+ structSerializationFor(type->templateArguments.front(), name + '_', types)
-				+ "}\n"
-				+ "serializer->emitArrayEnd(" + name + "." + types->listSizeFunction() + "());\n";
-	} else if (type->name == "Map") {
-		return std::string("serializer->emitObjectStart();\n")
-				+ "for (const auto &" + name + "_ : " + name + ") {\n"
-				+ "serializer->emitObjectKey(" + name + "_.first);\n"
-				+ structSerializationFor(type->templateArguments[1], name + '_', types)
-				+ "}\n"
-				+ "serializer->emitObjectEnd(" + name + "." + types->listSizeFunction() + "());\n";
-	} else if (type->name == "Variant") {
-		return ""; // TODO
-	} else {
-		return "serializer->emitValue(" + name + ");\n";
-	}
-}
-
 static void writeEnumHeader(std::ofstream &out, const Enum &enumeration, TypeProvider *types)
 {
 	out << generateEnumHeader(ARG_TOOL_VERSION, enumeration, types);
 }
 static void writeEnumSource(std::ofstream &out, const Enum &enumeration, TypeProvider *types, const std::string &headerFilename)
 {
-	std::vector<std::string> acceptedNames, acceptedValues;
-	std::transform(enumeration.entries.begin(), enumeration.entries.end(), std::back_inserter(acceptedNames), [](const EnumEntry &e) { return e.name; });
-	std::transform(enumeration.entries.begin(), enumeration.entries.end(), std::back_inserter(acceptedValues), [](const EnumEntry &e) { return std::to_string(e.value); });
-
-	out << generateEnumSource(ARG_TOOL_VERSION, enumeration, types, headerFilename, acceptedNames, acceptedValues);
+	out << generateEnumSource(ARG_TOOL_VERSION, enumeration, types, headerFilename);
 }
 static void writeStructHeader(std::ofstream &out, const Struct &structure, TypeProvider *types)
 {
@@ -116,17 +90,7 @@ static void writeStructHeader(std::ofstream &out, const Struct &structure, TypeP
 }
 static void writeStructSource(std::ofstream &out, const Struct &structure, TypeProvider *types, const std::string &headerFilename)
 {
-	std::vector<std::string> acceptedObjectKeys;
-	std::transform(structure.members.begin(), structure.members.end(), std::back_inserter(acceptedObjectKeys), [](const Attribute &a) { return a.name; });
-
-	std::unordered_set<std::string> listTypes;
-	for (const Attribute &attribute : structure.members) {
-		for (const std::string &type : listTypesRecursive(attribute.type)) {
-			listTypes.insert(type);
-		}
-	}
-
-	out << generateStructSource(ARG_TOOL_VERSION, structure, types, headerFilename, acceptedObjectKeys, listTypes, &structSerializationFor);
+	out << generateStructSource(ARG_TOOL_VERSION, structure, types, headerFilename);
 }
 
 template <typename Type, typename Func, typename... Args>

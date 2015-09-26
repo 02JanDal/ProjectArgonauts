@@ -20,13 +20,7 @@ includes: <string>, "DataTypes.h", "tool/compilers/cpp/TypeProviders.h"
 
 #pragma once
 
-#include <Argonauts.h>
 #include <<%= types->headerForType(enumeration.type) %>>
-
-namespace Argonauts {
-namespace Runtime { class Serializer; }
-namespace Util { class DelegatingSaxSink; }
-}
 
 enum class <%= enumeration.name %> : <%= types->type(enumeration.type) %>
 {
@@ -34,11 +28,3 @@ enum class <%= enumeration.name %> : <%= types->type(enumeration.type) %>
 	<%= entry.name %> = <%= entry.value %>,
 <% } %>
 };
-
-void serialize(const <%= enumeration.name %> data, Argonauts::Runtime::Serializer *serializer);
-namespace Argonauts {
-namespace Runtime {
-template <> HandleParseAction handleParseString<<%= enumeration.name %>>(<%= enumeration.name %> &type, const std::string &val);
-template <> HandleParseAction handleParseInteger<<%= enumeration.name %>>(<%= enumeration.name %> &type, const int64_t val);
-}
-}
