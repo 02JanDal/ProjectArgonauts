@@ -23,11 +23,22 @@ add_library(libargonauts SHARED
 target_link_libraries(libargonauts PUBLIC argonauts_util)
 target_include_directories(libargonauts PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/runtime>
-	$<INSTALL_INTERFACE:include/runtime>)
+	$<INSTALL_INTERFACE:include/runtime>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+)
 target_compile_options(libargonauts PRIVATE "-Werror")
-set_target_properties(libargonauts PROPERTIES OUTPUT_NAME argonauts VERSION ${PROJECT_VERSION})
+set_target_properties(libargonauts PROPERTIES
+	OUTPUT_NAME argonauts
+	VERSION ${PROJECT_VERSION}
+	CXX_VISIBILITY_PRESET hidden
+	VISIBILITY_INLINES_HIDDEN 1
+)
+
+include(GenerateExportHeader)
+generate_export_header(libargonauts)
 
 install(TARGETS libargonauts EXPORT Argonauts
 	LIBRARY DESTINATION lib
 	INCLUDES DESTINATION include
 )
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libargonauts_export.h DESTINATION include/runtime)

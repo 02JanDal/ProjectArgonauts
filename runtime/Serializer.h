@@ -22,6 +22,7 @@
 #include <unordered_map>
 
 #include "util/SaxSink.h"
+#include "libargonauts_export.h"
 
 namespace std
 {
@@ -33,9 +34,9 @@ namespace Argonauts
 namespace Runtime
 {
 template <typename T>
-void serialize(const T &t, class Serializer *serializer) { t.serialize(serializer); }
+void LIBARGONAUTS_EXPORT serialize(const T &t, class Serializer *serializer) { t.serialize(serializer); }
 
-class Serializer
+class LIBARGONAUTS_EXPORT Serializer
 {
 public:
 	virtual ~Serializer();
@@ -98,7 +99,7 @@ private:
 	}
 };
 
-class SaxSinkSerializer : public Serializer
+class LIBARGONAUTS_EXPORT SaxSinkSerializer : public Serializer
 {
 	Argonauts::Util::SaxSink *m_sink;
 

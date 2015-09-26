@@ -22,21 +22,23 @@
 #include "Parser.h"
 #include "Serializer.h"
 
+#include "libargonauts_export.h"
+
 namespace Argonauts
 {
 namespace Runtime
 {
-class Exception : public std::runtime_error
+class LIBARGONAUTS_EXPORT Exception : public std::runtime_error
 {
 	using std::runtime_error::runtime_error;
 };
-class InvalidEnumValue : public Exception
+class LIBARGONAUTS_EXPORT InvalidEnumValue : public Exception
 {
 public:
 	explicit InvalidEnumValue(const std::string &actual, const std::vector<std::string> &expected);
 	explicit InvalidEnumValue(const int actual, const std::vector<int> &expected);
 };
-class InvalidObjectKey : public Exception
+class LIBARGONAUTS_EXPORT InvalidObjectKey : public Exception
 {
 public:
 	explicit InvalidObjectKey(const std::string &actual, const std::vector<std::string> &expected);
