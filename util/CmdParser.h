@@ -134,6 +134,8 @@ class Option : public std::enable_shared_from_this<Option>
 	bool earlyExit = false;
 	/// if non-empty, the argument must be contained in this list
 	vector<string> fromSet;
+	/// if non-empty, the default if no explicit argument is given
+	string defaultArgument;
 
 public:
 	using Ptr = std::shared_ptr<Option>;
@@ -147,15 +149,16 @@ public:
 		isRequired = true;
 		return shared_from_this();
 	}
-	Option::Ptr withArg(const string &arg)
+	Option::Ptr withArg(const string &arg, const string &def = string())
 	{
 		argument = arg;
+		defaultArgument = def;
 		return shared_from_this();
 	}
-	Option::Ptr withRequiredArg(const string &arg)
+	Option::Ptr withRequiredArg(const string &arg, const string &def = string())
 	{
 		isArgumentRequired = true;
-		return withArg(arg);
+		return withArg(arg, def);
 	}
 	Option::Ptr requireFromSet(const vector<string> &list)
 	{

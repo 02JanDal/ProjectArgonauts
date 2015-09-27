@@ -99,27 +99,29 @@ In case of name clashes the attribute of the sub-struct is used, thus allowing o
 
 Valid IDs:
 
-| ID                         | Description                                      | Argument     | Valid context\* |
-| -------------------------- | ------------------------------------------------ | ------------ | --------------- |
-| doc.brief                  | Short summary documentation                      | string       | Anywhere        |
-| doc.extended               | Full documentation, excluding brief              | string       | Anywhere        |
-| doc                        | Full documentation, including brief              | string       | Anywhere        |
-| hidden                     | Don't output this in the documentation           |              | Anywhere        |
-| optional                   | This attribute is not required                   |              | Attributes: All |
-| variant.selectBy           | How to choose which type to use when parsing\*\* | string\*\*   | A&A: Variant    |
-| verification.regex         | Must match this regular expression               | string       | A&A: String     |
-| verification.format        | Must be of this format                           | string\*\*\* | A&A: String     |
-| verification.minLength     | Must be at least this many characters            | integer      | A&A: String     |
-| verification.maxLength     | Must be no more than this many characters        | integer      | A&A: String     |
-| verification.fixedLength   | Must be exactly this many characters             | integer      | A&A: String     |
-| verification.min           | Must be at least this big                        | integer      | A&A: Integers   |
-| verification.max           | Must be no larger than this                      | integer      | A&A: Integers   |
-| verification.fixed         | Must be exactly this value                       | integer      | A&A: Integers   |
-| verification.oneOf         | Must be one of the these values                  | list<string> | A&A: String     |
-| verification.requireEither | Exactly one of these attributes must exist       | list<string> | Structure       |
+| ID                         | Description                                                                   | Argument           | Valid context\* |
+| -------------------------- | ----------------------------------------------------------------------------- | ------------------ | --------------- |
+| doc.brief                  | Short summary documentation                                                   | string             | Anywhere        |
+| doc.extended               | Full documentation, excluding brief                                           | string             | Anywhere        |
+| doc                        | Full documentation, including brief                                           | string             | Anywhere        |
+| hidden                     | Don't output this in the documentation                                        |                    | Anywhere        |
+| optional                   | This attribute is not required. The argument, if given, is the default value. | any                | Attributes: All |
+| variant.selectBy           | How to choose which type to use when parsing\*\*                              | string\*\*         | A&A: Variant    |
+| variant.typeFieldName      | The name of the field used to determine the type\*\*                          | string\*\*         | A&A: Variant    |
+| variant.typeFieldTypes     | Values for the typeField for each type in a variant\*\*                       | string\*\*         | A&A: Variant    |
+| verification.regex         | Must match this regular expression                                            | string             | A&A: String     |
+| verification.format        | Must be of this format                                                        | string\*\*\*       | A&A: String     |
+| verification.minLength     | Must be at least this many characters                                         | integer            | A&A: String     |
+| verification.maxLength     | Must be no more than this many characters                                     | integer            | A&A: String     |
+| verification.fixedLength   | Must be exactly this many characters                                          | integer            | A&A: String     |
+| verification.min           | Must be at least this big                                                     | integer            | A&A: Integers   |
+| verification.max           | Must be no larger than this                                                   | integer            | A&A: Integers   |
+| verification.fixed         | Must be exactly this value                                                    | integer            | A&A: Integers   |
+| verification.oneOf         | Must be one of the these values                                               | list&lt;string&gt; | A&A: String     |
+| verification.requireEither | Exactly one of these attributes must exist                                    | list&lt;string&gt; | Structure       |
 
 \* A&A: Attributes and type aliases of this type<br/>
-\*\* Some times the parser will not be able to determine the type of a `Variant`. This is the case when using more then one integer type or multiple structures/enumerations. When this is the case, this annotation is required, see below for valid values.<br/>
+\*\* Sometimes the parser will not be able to determine the type of a `Variant`. This is the case when using more then one integer type or multiple structures/enumerations. When this is the case, this annotation is required, see below for valid values.<br/>
 \*\*\* See below for available formats
 
 ##### Values for `variant.selectBy`
@@ -127,6 +129,9 @@ Valid IDs:
 * `firstFieldAvailable`
     * Must only contain structs. The name of the first fields must be unique.
     * Looks at the first field of each struct. If the field exists in the input data that struct is choosen.
+* `typeField`
+	* Looks for a field named `type` (can be changed by `variant.typeFieldName`) for the name of the type to use.
+	* By default the name of each type will be used. Use `variant.typeFieldTypes` to change that.
 
 ##### Values for `verification.format`
 
@@ -150,8 +155,10 @@ These types are available:
 
 ### Code
 
-The follow top-level directories are available:
+The following top-level directories are available:
 
+* common: Code shared between the `tool` and the `editor`, mostly parsing related
+* editor: A GUI editor written in Qt
 * embeddedcpptemplate: Simple executable to generates C++ code from ERB-like templates. Used for code and documentation generation.
 * example: Simple example usage.
 * runtime: The shared runtime library. The library also includes `util`.

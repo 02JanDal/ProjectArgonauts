@@ -29,6 +29,8 @@
 #include "DataTypes.h"
 
 #include "compilers/CppCompiler.h"
+#include "compilers/CppJSONCompiler.h"
+#include "compilers/CppMsgPackCompiler.h"
 #include "compilers/RubyCompiler.h"
 #include "compilers/JsonSchemaCompiler.h"
 #include "compilers/DocCompiler.h"
@@ -39,6 +41,8 @@ Compiler::Compiler()
 {
 	m_compilers.push_back(new DocCompiler);
 	m_compilers.push_back(new CppCompiler);
+	m_compilers.push_back(new CppJSONCompiler);
+	m_compilers.push_back(new CppMsgPackCompiler);
 	m_compilers.push_back(new RubyCompiler);
 	m_compilers.push_back(new JsonSchemaCompiler);
 }

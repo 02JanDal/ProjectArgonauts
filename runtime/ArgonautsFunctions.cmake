@@ -23,28 +23,62 @@ endif()
 
 include(CMakeParseArguments)
 function(process_argonauts_cpp)
-	cmake_parse_arguments(PAC "" "OUTVAR;TYPES;OUTDIR;TARGET" "INFILES" ${ARGN})
+	cmake_parse_arguments(PAC "" "OUTVAR;TYPES;OUTDIR;TARGET;INFILE" "PARSERS;SERIALIZERS;FILETYPES" ${ARGN})
 	if(NOT PAC_TYPES)
 		set(PAC_TYPES "stl")
 	endif()
-
 	set(finalResult )
-	foreach(file ${PAC_INFILES})
-		file(STRINGS ${file} types REGEX "[\\w^]*(struct|enum) ([^ <]*)")
-		set(resultFiles )
-		foreach(type ${types})
-			string(REGEX REPLACE "[\\w^]*(struct|enum) ([^ <]*).*" "\\2" type ${type})
-			list(APPEND resultFiles ${PAC_OUTDIR}/${type}.arg.h ${PAC_OUTDIR}/${type}.arg.cpp)
+
+	if(NOT PAC_INFILE OR "${PAC_INFILE}" STREQUAL "")
+		message(AUTHOR_WARNING "Missing required argument: INFILE")
+	endif()
+	if((NOT "${PAC_PARSERS}" STREQUAL "" OR NOT "${PAC_SERIALIZERS}" STREQUAL "") AND "${PAC_FILETYPES}" STREQUAL "")
+		message(AUTHOR_WARNING "Missing required argument: FILETYPES (required because PARSERS or SERIALIZERS was given)")
+	endif()
+
+	# General
+	file(STRINGS ${PAC_INFILE} types REGEX "[\\w^]*(struct|enum) ([^ <]*)")
+	set(resultFiles )
+	foreach(type ${types})
+		string(REGEX REPLACE "[\\w^]*(struct|enum) ([^ <]*).*" "\\2" type ${type})
+		list(APPEND resultFiles ${PAC_OUTDIR}/${type}.arg.h ${PAC_OUTDIR}/${type}.arg.cpp)
+	endforeach()
+	add_custom_command(OUTPUT ${resultFiles} VERBATIM
+		COMMAND argonauts compile cpp --output ${PAC_OUTDIR} --types ${PAC_TYPES} ${PAC_INFILE}
+		COMMENT "Generating C++ code from argonauts grammar ${PAC_INFILE}..."
+		MAIN_DEPENDENCY ${PAC_INFILE}
+		DEPENDS argonauts
+	)
+	list(APPEND finalResult ${resultFiles})
+
+	set(types ${PAC_PARSERS} ${PAC_SERIALIZERS})
+	list(REMOVE_DUPLICATES types)
+	foreach(type ${types})
+		foreach(filetype ${PAC_FILETYPES})
+			if(NOT ";json;msgpack;" MATCHES ";${filetype};")
+				message(AUTHOR_WARNING "Unknown argument to FILETYPES: ${filetype}")
+			endif()
+
+			set(args )
+			set(resultFiles )
+			if(";${PAC_PARSERS};" MATCHES ";${type};")
+				list(APPEND resultFiles ${PAC_OUTDIR}/${type}.parser.${filetype}.arg.h ${PAC_OUTDIR}/${type}.parser.${filetype}.arg.cpp)
+			else()
+				list(APPEND args "--no-parser")
+			endif()
+			if(";${PAC_SERIALIZERS};" MATCHES ";${type};")
+				list(APPEND resultFiles ${PAC_OUTDIR}/${type}.serializer.${filetype}.arg.h ${PAC_OUTDIR}/${type}.serializer.${filetype}.arg.cpp)
+			else()
+				list(APPEND args "--no-serializer")
+			endif()
+			add_custom_command(OUTPUT ${resultFiles} VERBATIM
+				COMMAND argonauts compile cpp-${filetype} --root-type ${type} --output ${PAC_OUTDIR} ${args} --types ${PAC_TYPES} ${PAC_INFILE}
+				COMMENT "Generating C++ ${filetype} parser/serializer from argonauts grammar ${PAC_INFILE}..."
+				MAIN_DEPENDENCY ${PAC_INFILE}
+				DEPENDS argonauts
+			)
+			list(APPEND finalResult ${resultFiles})
 		endforeach()
-
-		add_custom_command(OUTPUT ${resultFiles} VERBATIM
-			COMMAND argonauts compile cpp --output ${PAC_OUTDIR} --types ${PAC_TYPES} ${file}
-			COMMENT "Generating from argonauts grammar ${file}..."
-			MAIN_DEPENDENCY ${file}
-			DEPENDS argonauts
-		)
-
-		list(APPEND finalResult ${resultFiles})
 	endforeach()
 
 	if(PAC_TARGET)

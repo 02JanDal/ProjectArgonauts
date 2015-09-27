@@ -27,6 +27,7 @@ class Parser;
 }
 }
 
+
 namespace Tool {
 struct File;
 
@@ -39,6 +40,19 @@ public:
 	virtual int resolverFlags() const { return 0; }
 	virtual std::string name() const = 0;
 	virtual std::string help() const = 0;
+
+protected:
+	template <typename Func, typename... Args>
+	void openFileAndCall(const std::string &filename, Func &&func, Args... args)
+	{
+		openFileAndCallInternal(filename, [func, args...](std::ostream &stream)
+		{
+			func(stream, args...);
+		});
+	}
+
+private:
+	void openFileAndCallInternal(const std::string &filename, std::function<void(std::ostream&)> &&func);
 };
 }
 }

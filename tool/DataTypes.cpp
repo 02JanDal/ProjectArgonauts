@@ -16,6 +16,8 @@
 
 #include "DataTypes.h"
 
+#include <algorithm>
+
 #include "util/StringUtil.h"
 #include "util/Error.h"
 
@@ -25,6 +27,20 @@
 
 namespace Argonauts {
 namespace Tool {
+
+std::vector<std::string> Type::integers()
+{
+	return {
+		"Int8",
+		"Int16",
+		"Int32",
+		"Int64",
+		"UInt8",
+		"UInt16",
+		"UInt32",
+		"UInt64"
+	};
+}
 
 std::vector<std::string> Type::namesRecursive() const
 {
@@ -130,6 +146,10 @@ int64_t Annotations::getInt(const std::string &name) const
 {
 	return contains(name) ? values.find(name)->second.get<PositionedInt64>().value : -1;
 }
+bool Annotations::isString(const std::string &name) const
+{
+	return contains(name) && values.find(name)->second.is<PositionedString>();
+}
 
 File lexAndParse(const std::string &data, const std::string &filename, const int flags)
 {
@@ -162,6 +182,19 @@ std::vector<std::string> File::definedTypes() const
 		out.push_back(u.name);
 	}
 	return out;
+}
+
+std::vector<Type::Ptr> File::allTypes() const
+{
+	std::vector<Type::Ptr> types;
+	for (const Struct &s : structs) {
+		const std::vector<Type::Ptr> add = s.allTypes();
+		std::copy_if(add.begin(), add.end(), std::back_inserter(types), [&types](const Type::Ptr &type)
+		{
+			return std::find_if(types.begin(), types.end(), [type](const Type::Ptr &other) { return other->compare(type); }) == types.end();
+		});
+	}
+	return types;
 }
 
 }

@@ -102,7 +102,7 @@ std::pair<std::string, std::string> processEct(const std::string &filename, cons
 			+ "\tstd::string out;\n";
 	while (true) {
 		const std::size_t next = data.find('<', index);
-		source += "\tout += toString(\"" + String::replaceAll(String::replaceAll(String::replaceAll(data.substr(index, next - index), "\n", "\\n"), "\t", "\\t"), "\"", "\\\"") + "\");\n";
+		source += "\tout += toString(\"" + String::replaceAll(String::replaceAll(String::replaceAll(String::replaceAll(data.substr(index, next - index), "\\", "\\\\"), "\n", "\\n"), "\t", "\\t"), "\"", "\\\"") + "\");\n";
 		if (next == std::string::npos) {
 			break;
 		}

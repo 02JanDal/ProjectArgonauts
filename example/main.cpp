@@ -15,6 +15,7 @@
  */
 
 #include "grammar/Site.arg.h"
+#include "grammar/Site.serializer.json.arg.h"
 
 #include <iostream>
 
@@ -35,6 +36,8 @@ int main(int argc, char **argv)
 	userBuilder.set_name("Blarg");
 	builder.add_users(userBuilder);
 	const Site site = builder.build();
+
+	std::cout << serializeSiteToJSON(site) << std::endl;
 
 	return 0;
 }

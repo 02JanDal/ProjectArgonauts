@@ -37,6 +37,8 @@ public:
 	virtual std::string listAtFunction() const = 0;
 	virtual std::string listIndexType() const = 0;
 
+	virtual std::string function(const std::string &id) const = 0;
+
 	std::string fullType(const Attribute &attribute) const;
 	std::string fullType(const std::shared_ptr<Type> &t) const;
 	bool isIntegerType(const std::string &type) const;
@@ -50,6 +52,7 @@ class QtTypeProvider : public TypeProvider
 public:
 	std::string type(const std::string &type) const override;
 	std::string headerForType(const std::string &type) const override;
+	std::string function(const std::string &id) const override;
 
 	std::string listAppendFunction() const override { return "append"; }
 	std::string listSizeFunction() const override { return "size"; }
@@ -60,6 +63,7 @@ class STLTypeProvider : public TypeProvider
 {
 	std::string type(const std::string &type) const override;
 	std::string headerForType(const std::string &type) const override;
+	std::string function(const std::string &id) const override;
 
 	std::string listAppendFunction() const override { return "push_back"; }
 	std::string listSizeFunction() const override { return "size"; }

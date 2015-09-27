@@ -17,6 +17,16 @@ compile_ect(TEMPLATE_SRC ${CMAKE_CURRENT_BINARY_DIR}/templates
 	compilers/cpp/templates/EnumSource.ect
 	compilers/cpp/templates/StructHeader.ect
 	compilers/cpp/templates/StructSource.ect
+	compilers/cpp/templates/UsingHeader.ect
+	compilers/cpp/templates/UsingSource.ect
+	compilers/cpp/templates/JSONParserHeader.ect
+	compilers/cpp/templates/JSONParserSource.ect
+	compilers/cpp/templates/JSONSerializerHeader.ect
+	compilers/cpp/templates/JSONSerializerSource.ect
+	compilers/cpp/templates/MsgPackParserHeader.ect
+	compilers/cpp/templates/MsgPackParserSource.ect
+	compilers/cpp/templates/MsgPackSerializerHeader.ect
+	compilers/cpp/templates/MsgPackSerializerSource.ect
 	compilers/doc/templates/Doc.ect
 )
 
@@ -55,6 +65,11 @@ add_executable(argonauts
 	compilers/RubyCompiler.cpp
 	compilers/DocCompiler.h
 	compilers/DocCompiler.cpp
+
+	compilers/CppJSONCompiler.h
+	compilers/CppJSONCompiler.cpp
+	compilers/CppMsgPackCompiler.h
+	compilers/CppMsgPackCompiler.cpp
 
 	compilers/cpp/TypeProviders.h
 	compilers/cpp/TypeProviders.cpp

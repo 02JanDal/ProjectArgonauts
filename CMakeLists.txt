@@ -19,7 +19,7 @@ enable_testing()
 
 find_package(Boost 1.58 REQUIRED COMPONENTS filesystem system)
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -Wextra -Wall -Weverything -Wno-c++98-compat -Wno-c++98-compat-local-type-template-args -Wno-c++98-compat-pedantic -Wno-padded -Wno-weak-vtables")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wextra -Wall -Weverything -Wno-c++98-compat -Wno-c++98-compat-local-type-template-args -Wno-c++98-compat-pedantic -Wno-padded -Wno-weak-vtables")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 include(TestBigEndian)

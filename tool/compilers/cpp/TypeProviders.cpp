@@ -77,10 +77,12 @@ std::string QtTypeProvider::type(const std::string &type) const
 	mapping["UInt32"] = "quint32";
 	mapping["UInt64"] = "quint64";
 	mapping["String"] = "QString";
+	mapping["Double"] = "qreal";
 	mapping["List"] = "QVector";
 	mapping["Map"] = "QHash";
 	mapping["Bool"] = "bool";
 	mapping["Variant"] = "Argonauts::Util::Variant";
+	mapping["ByteArray"] = "QByteArray";
 	return getFromMapHelper(mapping, type, type);
 }
 
@@ -96,11 +98,25 @@ std::string QtTypeProvider::headerForType(const std::string &type) const
 	mapping["UInt32"] = "QtGlobal";
 	mapping["UInt64"] = "QtGlobal";
 	mapping["String"] = "QString";
+	mapping["Double"] = "QtGlobal";
 	mapping["List"] = "QVector";
 	mapping["Map"] = "QHash";
 	mapping["Bool"] = std::string();
 	mapping["Variant"] = "util/Variant.h";
+	mapping["ByteArray"] = "QByteArray";
 	return getFromMapHelper(mapping, type, type + ".arg.h");
+}
+
+std::string QtTypeProvider::function(const std::string &id) const
+{
+	std::unordered_map<std::string, std::string> mapping;
+	mapping["StringToByteArray"] = "QString::fromUtf8";
+	mapping["ByteArrayToString"] = "[](const QByteArray &ba) { return QString::fromUtf8(ba); }";
+	mapping["AppendToByteArray"] = "[](QByteArray &ba, const QByteArrray &d) { ba.append(d); }";
+	mapping["AppendToString"] = "[](QString &a, const QString &b) { a.append(b); }";
+	mapping["StringToStdString"] = "[](const QString &str) { return str.toStdString(); }";
+	mapping["StdStringToString"] = "[](const std::string &str) { return QString::fromStdString(str); }";
+	return getFromMapHelper(mapping, id, "");
 }
 
 std::string STLTypeProvider::type(const std::string &type) const
@@ -115,10 +131,12 @@ std::string STLTypeProvider::type(const std::string &type) const
 	mapping["UInt32"] = "std::uint32_t";
 	mapping["UInt64"] = "std::uint64_t";
 	mapping["String"] = "std::string";
+	mapping["Double"] = "double";
 	mapping["List"] = "std::vector";
 	mapping["Map"] = "std::unordered_map";
 	mapping["Bool"] = "bool";
 	mapping["Variant"] = "Argonauts::Util::Variant";
+	mapping["ByteArray"] = "std::vector<char>";
 	return getFromMapHelper(mapping, type, type);
 }
 
@@ -134,11 +152,23 @@ std::string STLTypeProvider::headerForType(const std::string &type) const
 	mapping["UInt32"] = "cstdint";
 	mapping["UInt64"] = "cstdint";
 	mapping["String"] = "string";
+	mapping["Double"] = std::string();
 	mapping["List"] = "vector";
 	mapping["Map"] = "unordered_map";
 	mapping["Bool"] = std::string();
 	mapping["Variant"] = "util/Variant.h";
+	mapping["ByteArray"] = "vector";
 	return getFromMapHelper(mapping, type, type + ".arg.h");
+}
+
+std::string STLTypeProvider::function(const std::string &id) const
+{
+	std::unordered_map<std::string, std::string> mapping;
+	mapping["StringToByteArray"] = "[](const std::string &s) { return std::vector<char>(s.begin(), s.end()); }";
+	mapping["ByteArrayToString"] = "[](const std::vector<char> &v) { return std::string(v.begin(), v.end()); }";
+	mapping["AppendToByteArray"] = "[](std::vector<char> &v, const std::vector<char> &d) { std::copy(d.begin(), d.end(), std::back_inserter(v)); }";
+	mapping["AppendToString"] = "[](std::string &a, const std::string &b) { a.append(b); }";
+	return getFromMapHelper(mapping, id, "");
 }
 }
 }

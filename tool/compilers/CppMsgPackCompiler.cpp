@@ -14,23 +14,20 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "CppMsgPackCompiler.h"
 
-#include "libargonauts_export.h"
+#include "util/CmdParser.h"
+#include "tool/DataTypes.h"
 
 namespace Argonauts {
-namespace Runtime {
-
-template <typename T, typename InputType>
-class Parser
+namespace Tool {
+void CppMsgPackCompiler::setup(std::shared_ptr<Util::CLI::Subcommand> &builder)
 {
-public:
-	virtual ~Parser() {}
+}
 
-	virtual T result() const = 0;
-	virtual void parse(const InputType &data) = 0;
-	virtual void end() = 0;
-};
-
+bool CppMsgPackCompiler::run(const Util::CLI::Parser &parser, const File &file)
+{
+	return false;
+}
 }
 }

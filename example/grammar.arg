@@ -9,6 +9,7 @@ struct User {
 	email String = 1;
 	@verification.optional
 	age UInt8 = 2;
+	@optional(5)
 	signup UInt64 = 4;
 	@doc.brief("A list of current hobbies of this user")
 	hobbies List<String> = 3;

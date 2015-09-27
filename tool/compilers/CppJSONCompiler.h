@@ -16,21 +16,21 @@
 
 #pragma once
 
-#include "libargonauts_export.h"
+#include "AbstractCompiler.h"
 
 namespace Argonauts {
-namespace Runtime {
-
-template <typename T, typename InputType>
-class Parser
+namespace Tool {
+class CppJSONCompiler : public AbstractCompiler
 {
 public:
-	virtual ~Parser() {}
+	void setup(std::shared_ptr<Util::CLI::Subcommand> &builder) override;
+	bool run(const Util::CLI::Parser &parser, const File &file) override;
+	std::string name() const override { return "cpp-json"; }
+	std::string help() const override { return "Generates C++ JSON parser/serializer files"; }
 
-	virtual T result() const = 0;
-	virtual void parse(const InputType &data) = 0;
-	virtual void end() = 0;
+private:
+	std::string m_dataTypes = "stl";
+	std::string m_directory;
 };
-
 }
 }

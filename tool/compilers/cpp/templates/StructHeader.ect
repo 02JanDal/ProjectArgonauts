@@ -65,7 +65,25 @@ public:
 
 	private:
 	<% for (const Argonauts::Tool::Attribute &attribute : structure.members) { %>
-		<%= types->fullType(attribute) %> m_<%= attribute.name %>;
+		<%= types->fullType(attribute) %> m_<%= attribute.name %>
+		<% if (attribute.type->isInteger() || attribute.type->name == "Double") { %>
+			<% if (attribute.annotations.contains("optional") && !attribute.annotations.isString("optional")) { %>
+			= <%= attribute.annotations.getInt("optional") %>
+			<% } else { %>
+			= 0
+			<% } %>
+		<% } else if (attribute.type->name == "Bool") { %>
+			= true
+		<% } else if (attribute.type->name == "String") { %>
+			<% if (attribute.annotations.contains("optional") && attribute.annotations.isString("optional")) { %>
+			= <%= attribute.annotations.getString("optional") %>
+			<% } else { %>
+			= <%= types->type("String") %>()
+			<% } %>
+		<% } else { %>
+			= <%= types->fullType(attribute) %>()
+		<% } %>
+			;
 	<% } %>
 	};
 
@@ -80,6 +98,24 @@ private:
 		: <%= String::joinStrings(constructorInitList, ", ") %> {}
 
 	<% for (const Argonauts::Tool::Attribute &attribute : structure.members) { %>
-		<%= types->fullType(attribute) %> m_<%= attribute.name %>;
+		<%= types->fullType(attribute) %> m_<%= attribute.name %>
+		<% if (attribute.type->isInteger() || attribute.type->name == "Double") { %>
+			<% if (attribute.annotations.contains("optional") && !attribute.annotations.isString("optional")) { %>
+			= <%= attribute.annotations.getInt("optional") %>
+			<% } else { %>
+			= 0
+			<% } %>
+		<% } else if (attribute.type->name == "Bool") { %>
+			= true
+		<% } else if (attribute.type->name == "String") { %>
+			<% if (attribute.annotations.contains("optional") && attribute.annotations.isString("optional")) { %>
+			= <%= attribute.annotations.getString("optional") %>
+			<% } else { %>
+			= <%= types->type("String") %>()
+			<% } %>
+		<% } else { %>
+			= <%= types->fullType(attribute) %>()
+		<% } %>
+			;
 	<% } %>
 };

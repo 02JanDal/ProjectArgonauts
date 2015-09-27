@@ -16,11 +16,10 @@
 
 #include "CppCompiler.h"
 
-#include <fstream>
-#include <ostream>
 #include <unordered_map>
 #include <unordered_set>
 
+#include <ostream>
 #include <boost/filesystem.hpp>
 
 #include "util/CmdParser.h"
@@ -31,6 +30,8 @@
 #include "templates/EnumSource.ect.h"
 #include "templates/StructHeader.ect.h"
 #include "templates/StructSource.ect.h"
+#include "templates/UsingHeader.ect.h"
+#include "templates/UsingSource.ect.h"
 
 #include "tool_config.h"
 
@@ -61,15 +62,15 @@ static std::vector<std::string> listTypesRecursive(const Type::Ptr &ptr)
 	return types;
 }
 
-static void writeEnumHeader(std::ofstream &out, const Enum &enumeration, TypeProvider *types)
+static void writeEnumHeader(std::ostream &out, const Enum &enumeration, TypeProvider *types)
 {
 	out << generateEnumHeader(ARG_TOOL_VERSION, enumeration, types);
 }
-static void writeEnumSource(std::ofstream &out, const Enum &enumeration, TypeProvider *types, const std::string &headerFilename)
+static void writeEnumSource(std::ostream &out, const Enum &enumeration, TypeProvider *types, const std::string &headerFilename)
 {
 	out << generateEnumSource(ARG_TOOL_VERSION, enumeration, types, headerFilename);
 }
-static void writeStructHeader(std::ofstream &out, const Struct &structure, TypeProvider *types)
+static void writeStructHeader(std::ostream &out, const Struct &structure, TypeProvider *types)
 {
 	// collect all required headers. use a set to prevent duplicates
 	std::unordered_set<std::string> typeHeaders;
@@ -88,31 +89,17 @@ static void writeStructHeader(std::ofstream &out, const Struct &structure, TypeP
 	typeHeaders.erase(std::string());
 	out << generateStructHeader(ARG_TOOL_VERSION, structure, types, typeHeaders, builderCopyInitList, builderBuildArgList, constructorArgs, constructorInitList);
 }
-static void writeStructSource(std::ofstream &out, const Struct &structure, TypeProvider *types, const std::string &headerFilename)
+static void writeStructSource(std::ostream &out, const Struct &structure, TypeProvider *types, const std::string &headerFilename)
 {
 	out << generateStructSource(ARG_TOOL_VERSION, structure, types, headerFilename);
 }
-
-template <typename Type, typename Func, typename... Args>
-void openFileAndCall(const std::string &filename, const Type &data, Func &&func, Args... args)
+static void writeUsingHeader(std::ostream &out, const Using &alias, TypeProvider *types)
 {
-	using namespace boost;
-
-	filesystem::path path = filesystem::path(filename).parent_path();
-	if (!filesystem::exists(path)) {
-		if (!filesystem::create_directories(path)) {
-			throw Util::Exception(std::string("Unable to create parent directories for ") + filename);
-		}
-	}
-	if (filesystem::exists(filesystem::path(filename)) && filesystem::is_regular_file(path)) {
-		throw Util::Exception(std::string("'") + filename + "' already exists but is not a file");
-	}
-
-	std::ofstream stream(filename);
-	if (!stream.good()) {
-		throw Util::Exception(std::string("Unable to open file '") + filename + "' for writing");
-	}
-	func(stream, data, args...);
+	out << generateUsingHeader(ARG_TOOL_VERSION, alias, types);
+}
+static void writeUsingSource(std::ostream &out, const Using &alias, TypeProvider *types, const std::string &headerFilename)
+{
+	out << generateUsingSource(ARG_TOOL_VERSION, alias, types, headerFilename);
 }
 
 bool CppCompiler::run(const Util::CLI::Parser &, const File &file)
@@ -127,12 +114,16 @@ bool CppCompiler::run(const Util::CLI::Parser &, const File &file)
 	}
 
 	for (const Enum &enumeration : file.enums) {
-		openFileAndCall(filenameFor(enumeration.name, true), enumeration, &writeEnumHeader, provider);
-		openFileAndCall(filenameFor(enumeration.name, false), enumeration, &writeEnumSource, provider, boost::filesystem::path(filenameFor(enumeration.name, true)).filename().string());
+		openFileAndCall(filenameFor(enumeration.name, true), &writeEnumHeader, enumeration, provider);
+		openFileAndCall(filenameFor(enumeration.name, false), &writeEnumSource, enumeration, provider, boost::filesystem::path(filenameFor(enumeration.name, true)).filename().string());
 	}
 	for (const Struct &structure : file.structs) {
-		openFileAndCall(filenameFor(structure.name, true), structure, &writeStructHeader, provider);
-		openFileAndCall(filenameFor(structure.name, false), structure, &writeStructSource, provider, boost::filesystem::path(filenameFor(structure.name, true)).filename().string());
+		openFileAndCall(filenameFor(structure.name, true), &writeStructHeader, structure, provider);
+		openFileAndCall(filenameFor(structure.name, false), &writeStructSource, structure, provider, boost::filesystem::path(filenameFor(structure.name, true)).filename().string());
+	}
+	for (const Using &alias : file.usings) {
+		openFileAndCall(filenameFor(alias.name, true), &writeUsingHeader, alias, provider);
+		openFileAndCall(filenameFor(alias.name, false), &writeUsingSource, alias, provider, boost::filesystem::path(filenameFor(alias.name, true)).filename().string());
 	}
 	return true;
 }

@@ -22,50 +22,12 @@
 #include <unordered_map>
 
 #include "util/Variant.h"
+#include "util/PositionedValue.h"
 
 namespace Argonauts {
 namespace Tool {
-
-// Wraps a value, like a string or an integer, with information about where in the input stream it occured
-template <typename T>
-struct PositionedValue
-{
-	PositionedValue(const T &value_ = T(), const int offset_ = -1, const int length_ = -1) : value(value_), offset(offset_), length(length_) {}
-
-	T value;
-	int offset, length;
-
-	operator T() const { return value; }
-
-	bool operator==(const T &other) const { return value == other; }
-	bool operator!=(const T &other) const { return value != other; }
-	bool operator==(const PositionedValue<T> &other) const { return value == other.value; }
-	bool operator!=(const PositionedValue<T> &other) const { return value == other.value; }
-};
-using PositionedString = PositionedValue<std::string>;
-using PositionedInt64 = PositionedValue<int64_t>;
-}
-}
-template <typename T>
-T operator+(const T &a, const Argonauts::Tool::PositionedValue<T> &b)
-{
-	return a + b.value;
-}
-
-namespace std {
-template <>
-struct hash<Argonauts::Tool::PositionedString>
-{
-	std::size_t operator()(const Argonauts::Tool::PositionedString &string) const
-	{
-		return std::hash<std::string>()(string.value);
-	}
-};
-inline std::string to_string(const Argonauts::Tool::PositionedString &str) { return str.value; }
-}
-
-namespace Argonauts {
-namespace Tool {
+using Argonauts::Util::PositionedString;
+using Argonauts::Util::PositionedInt64;
 
 struct Annotations
 {
@@ -77,6 +39,7 @@ struct Annotations
 	std::string getString(const std::string &name, const std::string &def = std::string()) const;
 	std::vector<std::string> getStrings(const std::string &name) const;
 	int64_t getInt(const std::string &name) const;
+	bool isString(const std::string &name) const;
 
 	// convenience: doc.*
 	bool hasDocumentation() const { return contains("doc") || contains("doc.brief"); }
@@ -87,6 +50,8 @@ struct Annotations
 struct Type
 {
 	using Ptr = std::shared_ptr<Type>;
+
+	static std::vector<std::string> integers();
 
 	bool isInteger() const
 	{
@@ -185,6 +150,7 @@ struct File
 	std::vector<Using> usings;
 
 	std::vector<std::string> definedTypes() const;
+	std::vector<Type::Ptr> allTypes() const;
 };
 
 enum LexAndParseFlags

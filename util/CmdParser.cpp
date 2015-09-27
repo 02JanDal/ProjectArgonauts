@@ -262,7 +262,13 @@ int Parser::parse(const int argc, const char **argv)
 	// populate permantent data structures
 	for (const Item &item : items)
 	{
-		m_options[options[item.option]->names.front()].push_back(item.argument);
+		m_options[options[item.option]->names.front()].push_back(item.hasArgument ? item.argument : options[item.option]->defaultArgument);
+	}
+	for (const auto &pair : options) {
+		const Option::Ptr &opt = pair.second;
+		if (m_options.find(pair.first) == m_options.end() && !opt->defaultArgument.empty()) {
+			m_options[opt->names.front()].push_back(opt->defaultArgument);
+		}
 	}
 	for (const Subcommand::Ptr &cmd : commands)
 	{

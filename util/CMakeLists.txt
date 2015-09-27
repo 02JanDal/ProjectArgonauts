@@ -16,6 +16,7 @@ add_library(argonauts_util STATIC
 	ArgonautsException.h
 	Error.h
 	Error.cpp
+	PositionedValue.h
 
 	SelfContainerIterator.h
 	Variant.h

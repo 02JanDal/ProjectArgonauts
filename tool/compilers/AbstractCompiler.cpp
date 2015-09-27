@@ -16,8 +16,37 @@
 
 #include "AbstractCompiler.h"
 
+#include <fstream>
+#include <ostream>
+
+#include <boost/filesystem.hpp>
+
+#include "util/ArgonautsException.h"
+
 namespace Argonauts {
 namespace Tool {
 AbstractCompiler::~AbstractCompiler() {}
+
+void AbstractCompiler::openFileAndCallInternal(const std::string &filename, std::function<void(std::ostream&)> &&func)
+{
+	using namespace boost;
+
+	filesystem::path path = filesystem::path(filename).parent_path();
+	if (!filesystem::exists(path)) {
+		if (!filesystem::create_directories(path)) {
+			throw Util::Exception(std::string("Unable to create parent directories for ") + filename);
+		}
+	}
+	if (filesystem::exists(filesystem::path(filename)) && filesystem::is_regular_file(path)) {
+		throw Util::Exception(std::string("'") + filename + "' already exists but is not a file");
+	}
+
+	std::ofstream stream(filename);
+	if (!stream.good()) {
+		throw Util::Exception(std::string("Unable to open file '") + filename + "' for writing");
+	}
+	func(stream);
+}
+
 }
 }
